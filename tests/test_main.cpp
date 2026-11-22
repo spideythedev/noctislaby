@@ -3,6 +3,7 @@
 #include "io/resource_cache.h"
 #include "object/class_db.h"
 #include "math/aabb.h"
+#include "math/quaternion.h"
 #include "math/rect2.h"
 #include "math/vector2.h"
 #include "math/vector3.h"
@@ -19,6 +20,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <numbers>
 #include <string_view>
 #include <unordered_map>
 
@@ -236,6 +238,32 @@ void test_variants() {
     expect(nle::Variant(std::int32_t{123}) == integer, "integer widths share Variant type");
 }
 
+void test_quaternions() {
+    const nle::real_t half_pi = std::numbers::pi_v<nle::real_t> / nle::real_t{2};
+    const nle::Quaternion rotation =
+        nle::Quaternion::from_axis_angle({0, 0, 1}, half_pi);
+
+    const nle::Vector3 rotated = rotation.xform({1, 0, 0});
+    expect(std::abs(rotated.x) < nle::real_t{0.0001F},
+           "quaternion rotates x axis away from x");
+    expect(std::abs(rotated.y - nle::real_t{1}) < nle::real_t{0.0001F},
+           "quaternion rotates x axis into y");
+
+    const nle::Quaternion halfway = nle::Quaternion::slerp(
+        nle::Quaternion{},
+        rotation,
+        nle::real_t{0.5F}
+    );
+    const nle::Vector3 halfway_vector = halfway.xform({1, 0, 0});
+    expect(std::abs(halfway_vector.x - nle::real_t{0.7071F}) < nle::real_t{0.001F},
+           "quaternion slerp interpolates rotation");
+    expect(std::abs(halfway_vector.y - nle::real_t{0.7071F}) < nle::real_t{0.001F},
+           "quaternion slerp interpolates rotation axis");
+
+    expect(nle::Quaternion::from_axis_angle({}, half_pi) == nle::Quaternion{},
+           "zero axis produces identity rotation");
+}
+
 void test_geometry() {
     const nle::Rect2 first{{0, 0}, {10, 10}};
     const nle::Rect2 second{{5, 5}, {10, 10}};
@@ -324,6 +352,7 @@ int main() {
     test_signals();
     test_string_names();
     test_variants();
+    test_quaternions();
     test_geometry();
     test_vectors();
     test_memory();
