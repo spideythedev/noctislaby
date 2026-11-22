@@ -50,7 +50,7 @@ ErrorCode RenderGraph::create_resource(
     }
 
     try {
-            resources_.push_back(Resource{std::string(name), imported});
+        resources_.push_back(Resource{std::string(name), imported});
     } catch (const std::bad_alloc&) {
         return ErrorCode::OutOfMemory;
     } catch (const std::length_error&) {
@@ -100,7 +100,7 @@ ErrorCode RenderGraph::add_pass(
     }
 
     try {
-            passes_.push_back(Pass{
+        passes_.push_back(Pass{
                 std::string(name),
                 std::vector<RenderGraphResourceUse>(resources.begin(), resources.end()),
                 {}
@@ -143,7 +143,7 @@ ErrorCode RenderGraph::compile(std::vector<RenderGraphPassId>& order) const {
     order.clear();
 
     try {
-            const std::size_t pass_count = passes_.size();
+        const std::size_t pass_count = passes_.size();
         std::vector<std::vector<std::size_t>> edges(pass_count);
         std::vector<std::size_t> indegree(pass_count, 0);
         std::vector<std::size_t> last_writer(resources_.size(), pass_count);
