@@ -3,11 +3,13 @@
 #include "io/resource_cache.h"
 #include "object/class_db.h"
 #include "math/aabb.h"
+#include "math/basis.h"
 #include "math/quaternion.h"
 #include "math/rect2.h"
 #include "math/vector2.h"
 #include "math/vector3.h"
 #include "math/vector4.h"
+#include "math/transform3d.h"
 #include "memory/memory.h"
 #include "object/object.h"
 #include "object/object_db.h"
@@ -238,6 +240,49 @@ void test_variants() {
     expect(nle::Variant(std::int32_t{123}) == integer, "integer widths share Variant type");
 }
 
+void test_transforms() {
+    const nle::real_t half_pi = std::numbers::pi_v<nle::real_t> / nle::real_t{2};
+    const nle::Quaternion rotation =
+        nle::Quaternion::from_axis_angle({0, 0, 1}, half_pi);
+    const nle::Basis rotated_basis = nle::Basis::from_quaternion(rotation);
+    const nle::Vector3 rotated_axis = rotated_basis.xform({1, 0, 0});
+
+    expect(std::abs(rotated_axis.x) < nle::real_t{0.0001F},
+           "Basis quaternion conversion x");
+    expect(std::abs(rotated_axis.y - nle::real_t{1}) < nle::real_t{0.0001F},
+           "Basis quaternion conversion y");
+
+    const nle::Basis scale{
+        {2, 0, 0},
+        {0, 3, 0},
+        {0, 0, 4}
+    };
+    expect(scale.determinant() == nle::real_t{24}, "Basis determinant");
+
+    nle::Basis inverse_basis;
+    expect(scale.try_inverse(inverse_basis), "non-singular Basis has inverse");
+    const nle::Vector3 restored = inverse_basis.xform(scale.xform({1, 1, 1}));
+    expect(std::abs(restored.x - nle::real_t{1}) < nle::real_t{0.0001F} &&
+           std::abs(restored.y - nle::real_t{1}) < nle::real_t{0.0001F} &&
+           std::abs(restored.z - nle::real_t{1}) < nle::real_t{0.0001F},
+           "Basis inverse restores vector");
+
+    nle::Basis singular{{1, 0, 0}, {2, 0, 0}, {0, 0, 1}};
+    expect(!singular.try_inverse(inverse_basis), "singular Basis has no inverse");
+
+    const nle::Transform3D transform{scale, {10, 20, 30}};
+    const nle::Vector3 world_point = transform.xform({1, 1, 1});
+    expect(world_point == nle::Vector3{12, 23, 34}, "Transform3D applies basis and origin");
+
+    nle::Transform3D inverse_transform;
+    expect(transform.try_affine_inverse(inverse_transform), "Transform3D has affine inverse");
+    const nle::Vector3 local_point = inverse_transform.xform(world_point);
+    expect(std::abs(local_point.x - nle::real_t{1}) < nle::real_t{0.0001F} &&
+           std::abs(local_point.y - nle::real_t{1}) < nle::real_t{0.0001F} &&
+           std::abs(local_point.z - nle::real_t{1}) < nle::real_t{0.0001F},
+           "Transform3D inverse restores local point");
+}
+
 void test_quaternions() {
     const nle::real_t half_pi = std::numbers::pi_v<nle::real_t> / nle::real_t{2};
     const nle::Quaternion rotation =
@@ -353,6 +398,7 @@ int main() {
     test_string_names();
     test_variants();
     test_quaternions();
+    test_transforms();
     test_geometry();
     test_vectors();
     test_memory();
