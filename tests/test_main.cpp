@@ -193,7 +193,8 @@ void test_rendering_device() {
 
     expect(device.update_buffer(first, 7, update) == nle::ErrorCode::InvalidParameter,
            "buffer update rejects out-of-range writes");
-    expect(device.create_buffer({0, nle::BufferUsage::Vertex, {}}, first) ==
+    nle::RID invalid_buffer;
+    expect(device.create_buffer({0, nle::BufferUsage::Vertex, {}}, invalid_buffer) ==
            nle::ErrorCode::InvalidParameter,
            "null device rejects zero-sized buffers");
 
