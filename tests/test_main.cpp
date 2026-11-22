@@ -1,4 +1,5 @@
 #include "error/error.h"
+#include "io/file_access.h"
 #include "io/resource.h"
 #include "io/resource_cache.h"
 #include "object/class_db.h"
@@ -21,7 +22,9 @@
 #include "string/string_name.h"
 #include "variant/variant.h"
 
+#include <array>
 #include <cmath>
+#include <filesystem>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -125,6 +128,45 @@ void test_reference_counting() {
 
     expect(destruction_count == 1, "last reference destroys resource");
     expect(!nle::ObjectDB::instance_exists(id), "released resource leaves object registry");
+}
+
+void test_file_access() {
+    const std::filesystem::path path =
+        std::filesystem::temp_directory_path() / "noctislaby-file-access-test.bin";
+    std::error_code filesystem_error;
+    std::filesystem::remove(path, filesystem_error);
+
+    const std::array<std::byte, 4> source{
+        std::byte{0x10}, std::byte{0x20}, std::byte{0x30}, std::byte{0x40}
+    };
+
+    nle::ErrorCode error = nle::ErrorCode::Failed;
+    {
+        auto file = nle::FileAccess::open(path, nle::FileMode::Write, &error);
+        expect(file != nullptr, "file opens for writing");
+        expect(error == nle::ErrorCode::Ok, "file open clears error state");
+        expect(file->write(source), "file writes binary bytes");
+        file->flush();
+        expect(file->get_length() == source.size(), "file reports byte length");
+    }
+
+    {
+        auto file = nle::FileAccess::open(path, nle::FileMode::Read, &error);
+        expect(file != nullptr, "file opens for reading");
+
+        std::array<std::byte, 4> destination{};
+        expect(file->read(destination) == destination.size(), "file reads binary bytes");
+        expect(destination == source, "file contents round trip");
+        expect(file->get_position() == 4, "file reports current position");
+
+        expect(file->seek(1), "file seeks to byte offset");
+        std::array<std::byte, 2> partial{};
+        expect(file->read(partial) == partial.size(), "file reads after seeking");
+        expect(partial[0] == source[1] && partial[1] == source[2],
+               "seek reads expected bytes");
+    }
+
+    std::filesystem::remove(path, filesystem_error);
 }
 
 void test_resources() {
@@ -455,6 +497,7 @@ int main() {
     test_class_db();
     test_object_registry();
     test_reference_counting();
+    test_file_access();
     test_resources();
     test_signals();
     test_string_names();
