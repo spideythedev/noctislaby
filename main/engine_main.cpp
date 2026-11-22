@@ -1,7 +1,7 @@
 #include "engine_main.h"
 
 #include "nle/engine_config.h"
-#include "core/logging/logger.h"
+#include "logging/logger.h"
 
 #include <string>
 
