@@ -32,7 +32,7 @@ struct Vector2 final {
 
     [[nodiscard]] Vector2 normalized() const noexcept {
         const real_t magnitude = length();
-        return magnitude > REAL_EPSILON ? *this / magnitude : Vector2{};
+        return magnitude > REAL_EPSILON ? Vector2{x / magnitude, y / magnitude} : Vector2{};
     }
 
     [[nodiscard]] constexpr bool is_zero() const noexcept {
