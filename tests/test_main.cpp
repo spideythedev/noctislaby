@@ -1,4 +1,5 @@
 #include "error/error.h"
+#include "config/project_config.h"
 #include "io/file_access.h"
 #include "io/resource.h"
 #include "io/resource_cache.h"
@@ -759,6 +760,72 @@ void test_concurrent_resource_loading() {
     }), "concurrent resource requests receive the same cached instance");
 }
 
+void test_project_config() {
+    nle::ProjectConfig config;
+    expect(config.set_value("application", "name", "NoctisLaby Test"),
+           "project config stores string values");
+    expect(config.set_value("application", "main_scene", "res://scenes/main.nlescene"),
+           "project config stores resource paths");
+    expect(config.set_value("rendering", "vsync", "true"),
+           "project config stores boolean values");
+    expect(config.set_value("physics", "ticks_per_second", "120"),
+           "project config stores integer values");
+    expect(config.set_value("application", "description", "A \"quoted\" line\nsecond line"),
+           "project config stores escaped text");
+    expect(!config.set_value("", "invalid", "value"),
+           "project config rejects empty section names");
+
+    bool vsync = false;
+    std::int64_t ticks = 0;
+    expect(config.get_bool("rendering", "vsync", vsync) && vsync,
+           "project config parses boolean values");
+    expect(config.get_int("physics", "ticks_per_second", ticks) && ticks == 120,
+           "project config parses integer values");
+    expect(!config.get_bool("physics", "ticks_per_second", vsync),
+           "project config rejects invalid boolean conversions");
+
+    const std::filesystem::path path =
+        std::filesystem::temp_directory_path() / "noctislaby-project-test.nleproject";
+    const std::filesystem::path invalid_path =
+        std::filesystem::temp_directory_path() / "noctislaby-project-invalid.nleproject";
+    std::error_code filesystem_error;
+    std::filesystem::remove(path, filesystem_error);
+    std::filesystem::remove(invalid_path, filesystem_error);
+
+    expect(config.save(path) == nle::ErrorCode::Ok,
+           "project config saves deterministic project files");
+
+    nle::ProjectConfig restored;
+    expect(restored.set_value("temporary", "key", "old"),
+           "project config prepares transactional load test");
+    expect(restored.load(path) == nle::ErrorCode::Ok,
+           "project config loads project files");
+    expect(restored.get_value("application", "name") ==
+           std::optional<std::string>("NoctisLaby Test"),
+           "project config restores string values");
+    expect(restored.get_value("application", "description") ==
+           std::optional<std::string>("A \"quoted\" line\nsecond line"),
+           "project config restores escaped text");
+    expect(!restored.has_value("temporary", "key"),
+           "project config replaces previous state after successful load");
+
+    {
+        auto file = nle::FileAccess::open(invalid_path, nle::FileMode::Write);
+        expect(static_cast<bool>(file), "project config opens invalid fixture");
+        const std::string invalid = "[application]\nname = \"unterminated\n";
+        const auto bytes = std::as_bytes(std::span(invalid.data(), invalid.size()));
+        expect(file->write(bytes), "project config writes invalid fixture");
+    }
+    expect(restored.load(invalid_path) == nle::ErrorCode::InvalidParameter,
+           "project config rejects malformed values");
+    expect(restored.get_value("application", "name") ==
+           std::optional<std::string>("NoctisLaby Test"),
+           "failed project config load preserves existing state");
+
+    std::filesystem::remove(path, filesystem_error);
+    std::filesystem::remove(invalid_path, filesystem_error);
+}
+
 void test_resources() {
     nle::Ref<nle::Resource> resource = nle::make_ref<TestTexture>();
     int changed_count = 0;
@@ -1190,6 +1257,7 @@ int main() {
     test_resource_loader();
     test_concurrent_resource_loading();
     test_resources();
+    test_project_config();
     test_resource_uid_registry();
     test_resource_paths();
     test_signals();
