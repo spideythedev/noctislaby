@@ -165,6 +165,26 @@ void test_spatial_nodes() {
     };
     node_3d.set_transform(transform);
     expect(node_3d.get_transform() == transform, "Node3D stores full transform");
+
+    auto parent_2d = std::make_unique<nle::Node2D>("Parent2D");
+    parent_2d->set_position({10, 20});
+    auto child_2d = std::make_unique<nle::Node2D>("Child2D");
+    child_2d->set_position({1, 2});
+    nle::Node2D* child_2d_pointer = child_2d.get();
+    expect(parent_2d->add_child(std::move(child_2d)) == child_2d_pointer,
+           "Node2D accepts spatial child");
+    expect(child_2d_pointer->get_global_transform().xform({0, 0}) ==
+           nle::Vector2{11, 22}, "Node2D composes global transform");
+
+    auto parent_3d = std::make_unique<nle::Node3D>("Parent3D");
+    parent_3d->set_position({10, 20, 30});
+    auto child_3d = std::make_unique<nle::Node3D>("Child3D");
+    child_3d->set_position({1, 2, 3});
+    nle::Node3D* child_3d_pointer = child_3d.get();
+    expect(parent_3d->add_child(std::move(child_3d)) == child_3d_pointer,
+           "Node3D accepts spatial child");
+    expect(child_3d_pointer->get_global_transform().xform({0, 0, 0}) ==
+           nle::Vector3{11, 22, 33}, "Node3D composes global transform");
 }
 
 void test_scene_tree() {
