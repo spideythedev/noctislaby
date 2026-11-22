@@ -64,13 +64,14 @@ The current native foundation includes:
 - 2D/3D vectors, rectangles, AABBs, planes, colors, quaternions, bases and affine transforms.
 - Binary file access, resource metadata, resource IDs, resource caching, and pluggable format loader/saver dispatch.
 - Node ownership, scene-tree lifecycle, frame/physics callbacks, and transformable Node2D/Node3D types.
+- A backend-neutral rendering server, generation-safe resource identifiers, and a null rendering device with buffer resource operations.
 - Automated core, resource, scene and C-ABI tests.
 
 The foundation is intentionally not presented as full engine parity.
 
 ## Current gaps
 
-Rendering backends, physics simulation, audio drivers, animation systems, navigation, networking, the full C# host/bindings, editor tooling, asset import pipelines and platform export systems remain to be implemented.
+GPU rendering backends and draw submission, physics simulation, audio drivers, animation systems, navigation, networking, the full C# host/bindings, editor tooling, asset import pipelines and platform export systems remain to be implemented.
 
 Feature parity is measured by working behavior, integration and tests—not by directory names.
 
