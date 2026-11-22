@@ -443,10 +443,21 @@ void test_rendering_device() {
     expect(device.create_texture({0, 1, nle::TextureFormat::RGBA8Unorm, {}, {}},
                                  invalid_texture) == nle::ErrorCode::InvalidParameter,
            "null device rejects zero-width textures");
+    const nle::RID stale_texture = texture;
     expect(device.free_texture(texture) == nle::ErrorCode::Ok,
            "null device frees textures");
     expect(device.free_texture(texture) == nle::ErrorCode::NotFound,
            "null device rejects stale texture identifiers");
+    nle::RID reused_texture;
+    expect(device.create_texture(texture_description, reused_texture) == nle::ErrorCode::Ok,
+           "null device reuses released texture slots");
+    expect(reused_texture.get_index() == stale_texture.get_index() &&
+           reused_texture.get_generation() != stale_texture.get_generation(),
+           "texture allocator advances generation when reusing a slot");
+    expect(device.read_texture(stale_texture, 0, texture_contents) == nle::ErrorCode::NotFound,
+           "stale texture RID cannot access a reused resource");
+    expect(device.free_texture(reused_texture) == nle::ErrorCode::Ok,
+           "null device frees reused texture");
     expect(device.get_texture_count() == 0, "freeing texture updates resource count");
 
 
