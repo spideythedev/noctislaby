@@ -1,10 +1,14 @@
 #include "error/error.h"
+#include "math/vector2.h"
+#include "math/vector3.h"
+#include "math/vector4.h"
 #include "memory/memory.h"
 #include "object/object.h"
 #include "object/object_db.h"
 #include "object/ref_counted.h"
 #include "string/string_name.h"
 
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -97,6 +101,30 @@ void test_string_names() {
     expect(names.at(second) == 42, "string names work as hash map keys");
 }
 
+void test_vectors() {
+    const nle::Vector2 horizontal{3, 4};
+    expect(horizontal.length() == nle::real_t{5}, "Vector2 length");
+    expect(horizontal.dot({1, 0}) == nle::real_t{3}, "Vector2 dot product");
+    expect(nle::Vector2{1, 0}.cross({0, 1}) == nle::real_t{1},
+           "Vector2 scalar cross product");
+
+    const nle::Vector2 normalized = horizontal.normalized();
+    expect(std::abs(normalized.x - nle::real_t{0.6}) < nle::real_t{0.0001},
+           "Vector2 normalized x");
+    expect(std::abs(normalized.y - nle::real_t{0.8}) < nle::real_t{0.0001},
+           "Vector2 normalized y");
+
+    const nle::Vector3 right{1, 0, 0};
+    const nle::Vector3 up{0, 1, 0};
+    expect(right.cross(up) == nle::Vector3{0, 0, 1}, "Vector3 cross product");
+    expect(right.dot(up) == nle::real_t{0}, "Vector3 orthogonal dot product");
+    expect(nle::Vector3{}.normalized().is_zero(), "zero Vector3 remains zero");
+
+    const nle::Vector4 a{1, 2, 3, 4};
+    const nle::Vector4 b{2, 2, 2, 2};
+    expect(a.dot(b) == nle::real_t{20}, "Vector4 dot product");
+}
+
 void test_memory() {
     const nle::MemoryStats before = nle::Memory::get_stats();
     auto* memory = static_cast<unsigned char*>(nle::Memory::allocate(64, 64));
@@ -134,6 +162,7 @@ int main() {
     test_object_registry();
     test_reference_counting();
     test_string_names();
+    test_vectors();
     test_memory();
 
     std::cout << "All NoctisLaby core tests passed.\n";
