@@ -1,6 +1,8 @@
 add_library(nle_core STATIC
     error/error.cpp
     logging/logger.cpp
+    object/object.cpp
+    object/object_db.cpp
 )
 
 target_include_directories(nle_core
