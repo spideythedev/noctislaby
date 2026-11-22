@@ -26,6 +26,10 @@ struct Quaternion final {
         const real_t angle
     ) noexcept {
         const Vector3 normalized_axis = axis.normalized();
+        if (normalized_axis.is_zero()) {
+            return {};
+        }
+
         const real_t half_angle = angle * real_t{0.5};
         const real_t sine = std::sin(half_angle);
 
