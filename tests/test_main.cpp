@@ -281,18 +281,6 @@ void test_spatial_nodes() {
     expect(child_3d_pointer->get_global_transform().xform({0, 0, 0}) ==
            nle::Vector3{11, 22, 33}, "Node3D composes global transform");
 
-    auto nested_2d = std::make_unique<nle::Node2D>("Nested2D");
-    auto spacer_2d = std::make_unique<nle::Node>("Spacer2D");
-    auto leaf_2d = std::make_unique<nle::Node2D>("Leaf2D");
-    nested_2d->set_position({5, 7});
-    nle::Node2D* nested_2d_pointer = nested_2d.get();
-    nle::Node* spacer_2d_pointer = nested_2d->add_child(std::move(spacer_2d));
-    nle::Node2D* leaf_2d_pointer = leaf_2d.get();
-    expect(spacer_2d_pointer->add_child(std::move(leaf_2d)) == leaf_2d_pointer,
-           "Node2D can be nested below a plain Node");
-    expect(nested_2d_pointer->add_child(std::make_unique<nle::Node>("Tail")) != nullptr,
-           "Node2D accepts non-spatial children");
-
     auto nested_root = std::make_unique<nle::Node2D>("NestedRoot");
     nested_root->set_position({5, 7});
     auto spacer = std::make_unique<nle::Node>("Spacer");
@@ -309,6 +297,15 @@ void test_spatial_nodes() {
     expect(leaf_pointer->get_global_position() == nle::Vector2{20, 30},
            "Node2D global position setter preserves requested position");
 
+    auto singular_parent_2d = std::make_unique<nle::Node2D>("SingularParent2D");
+    singular_parent_2d->set_transform({{0, 0}, {0, 1}, {0, 0}});
+    auto singular_child_2d = std::make_unique<nle::Node2D>("SingularChild2D");
+    nle::Node2D* singular_child_2d_pointer = singular_child_2d.get();
+    expect(singular_parent_2d->add_child(std::move(singular_child_2d)) ==
+           singular_child_2d_pointer, "singular 2D parent accepts child");
+    expect(!singular_child_2d_pointer->set_global_position({1, 1}),
+           "Node2D rejects global position under singular parent transform");
+
     auto nested_root_3d = std::make_unique<nle::Node3D>("NestedRoot3D");
     nested_root_3d->set_position({5, 7, 9});
     auto spacer_3d = std::make_unique<nle::Node>("Spacer3D");
@@ -324,6 +321,18 @@ void test_spatial_nodes() {
            "Node3D sets global position");
     expect(leaf_3d_pointer->get_global_position() == nle::Vector3{20, 30, 40},
            "Node3D global position setter preserves requested position");
+
+    auto singular_parent_3d = std::make_unique<nle::Node3D>("SingularParent3D");
+    singular_parent_3d->set_transform({
+        nle::Basis{{0, 0, 0}, {0, 1, 0}, {0, 0, 1}},
+        {0, 0, 0}
+    });
+    auto singular_child_3d = std::make_unique<nle::Node3D>("SingularChild3D");
+    nle::Node3D* singular_child_3d_pointer = singular_child_3d.get();
+    expect(singular_parent_3d->add_child(std::move(singular_child_3d)) ==
+           singular_child_3d_pointer, "singular 3D parent accepts child");
+    expect(!singular_child_3d_pointer->set_global_position({1, 1, 1}),
+           "Node3D rejects global position under singular parent transform");
 }
 
 void test_scene_tree() {
