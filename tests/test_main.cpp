@@ -9,6 +9,7 @@
 #include "math/vector2.h"
 #include "math/vector3.h"
 #include "math/vector4.h"
+#include "math/transform2d.h"
 #include "math/transform3d.h"
 #include "memory/memory.h"
 #include "object/object.h"
@@ -240,6 +241,28 @@ void test_variants() {
     expect(nle::Variant(std::int32_t{123}) == integer, "integer widths share Variant type");
 }
 
+void test_transform2d() {
+    const nle::Transform2D transform{
+        {2, 0},
+        {0, 3},
+        {10, 20}
+    };
+
+    const nle::Vector2 world_point = transform.xform({1, 1});
+    expect(world_point == nle::Vector2{12, 23}, "Transform2D applies basis and origin");
+
+    nle::Transform2D inverse;
+    expect(transform.try_affine_inverse(inverse), "Transform2D has affine inverse");
+
+    const nle::Vector2 local_point = inverse.xform(world_point);
+    expect(std::abs(local_point.x - nle::real_t{1}) < nle::real_t{0.0001F} &&
+           std::abs(local_point.y - nle::real_t{1}) < nle::real_t{0.0001F},
+           "Transform2D inverse restores local point");
+
+    const nle::Transform2D singular{{1, 0}, {2, 0}, {0, 0}};
+    expect(!singular.try_affine_inverse(inverse), "singular Transform2D has no inverse");
+}
+
 void test_transforms() {
     const nle::real_t half_pi = std::numbers::pi_v<nle::real_t> / nle::real_t{2};
     const nle::Quaternion rotation =
@@ -398,6 +421,7 @@ int main() {
     test_string_names();
     test_variants();
     test_quaternions();
+    test_transform2d();
     test_transforms();
     test_geometry();
     test_vectors();
