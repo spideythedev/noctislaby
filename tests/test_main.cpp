@@ -1,5 +1,6 @@
 #include "error/error.h"
 #include "io/resource.h"
+#include "io/resource_cache.h"
 #include "object/class_db.h"
 #include "math/vector2.h"
 #include "math/vector3.h"
@@ -127,7 +128,7 @@ void test_resources() {
     resource->set_name("Stone");
     resource->set_uid(nle::ResourceUID{42});
 
-    expect(resource->get_class_name() == std::string_view("Resource"),
+    expect(std::string_view(resource->get_class_name()) == "Resource",
            "resource reports its engine class");
     expect(resource->get_path() == "res://textures/stone.png", "resource path");
     expect(resource->get_name() == "Stone", "resource name");
@@ -139,6 +140,24 @@ void test_resources() {
 
     resource->set_local_to_scene(true);
     expect(resource->is_local_to_scene(), "resource local-to-scene flag");
+
+    nle::ResourceCache cache;
+    expect(cache.insert(resource), "resource cache accepts path-backed resource");
+    expect(cache.size() == 1, "resource cache tracks entries");
+    expect(cache.contains("res://textures/stone.png"), "resource cache finds path");
+
+    nle::Ref<nle::Resource> loaded = cache.get("res://textures/stone.png");
+    expect(loaded.get() == resource.get(), "resource cache returns shared instance");
+    expect(resource->get_reference_count() == 3, "cache and loaded handle retain resource");
+
+    expect(cache.remove("res://textures/stone.png"), "resource cache removes entry");
+    loaded.reset();
+    expect(resource->get_reference_count() == 1, "removed cache entry releases ownership");
+    expect(!cache.remove("res://textures/stone.png"), "resource cache rejects missing entry");
+
+    expect(cache.insert(resource), "resource can be cached again");
+    cache.clear();
+    expect(cache.size() == 0, "resource cache clears all entries");
 
     expect(resource->changed_signal().disconnect(connection),
            "resource change connection can be disconnected");
