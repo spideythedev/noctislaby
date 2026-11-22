@@ -29,6 +29,7 @@
 #include "servers/rendering/rendering_server.h"
 #include "servers/rendering/render_graph.h"
 #include "servers/input/input_server.h"
+#include "servers/input/input_map.h"
 #include "scene/2d/node_2d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
@@ -177,6 +178,60 @@ public:
 private:
     int* destruction_count_;
 };
+
+void test_input_map() {
+    nle::InputServer input;
+    nle::InputMap input_map;
+    const nle::InputControl key_space{nle::InputEventType::Key, 0, 32};
+    const nle::InputControl mouse_left{nle::InputEventType::MouseButton, 0, 1};
+
+    expect(input_map.add_action("jump"), "input map registers an action");
+    expect(!input_map.add_action("jump"), "input map rejects duplicate actions");
+    expect(!input_map.add_binding("missing", key_space),
+           "input map rejects bindings for unknown actions");
+    expect(input_map.add_binding("jump", key_space),
+           "input map binds a keyboard key");
+    expect(input_map.add_binding("jump", mouse_left),
+           "input map supports multiple bindings per action");
+    expect(!input_map.add_binding("jump", key_space),
+           "input map rejects duplicate bindings");
+    expect(input_map.get_bindings("jump").size() == 2,
+           "input map returns action bindings");
+
+    nle::InputEvent press;
+    press.type = nle::InputEventType::Key;
+    press.code = 32;
+    press.pressed = true;
+    expect(input.push_event(press), "input map test queues key press");
+    input.process_frame();
+
+    expect(input_map.get_action_strength(input, "jump") == nle::real_t{1},
+           "input map reports digital action strength");
+    expect(input_map.is_action_pressed(input, "jump"),
+           "input map reports pressed action state");
+    expect(input_map.is_action_just_pressed(input, "jump"),
+           "input map reports action press edge");
+
+    input.process_frame();
+    expect(!input_map.is_action_just_pressed(input, "jump"),
+           "input map clears action press edge on next frame");
+
+    press.pressed = false;
+    expect(input.push_event(press), "input map test queues key release");
+    input.process_frame();
+    expect(!input_map.is_action_pressed(input, "jump") &&
+           input_map.is_action_just_released(input, "jump"),
+           "input map reports action release edge");
+
+    expect(input_map.remove_binding("jump", mouse_left),
+           "input map removes an action binding");
+    expect(!input_map.remove_binding("jump", mouse_left),
+           "input map rejects duplicate binding removal");
+    expect(input_map.remove_action("jump"),
+           "input map removes an action");
+    expect(!input_map.has_action("jump"),
+           "input map no longer reports removed action");
+}
 
 void test_input_server() {
     nle::InputServer input;
@@ -1361,6 +1416,7 @@ void test_memory() {
 
 int main() {
     test_input_server();
+    test_input_map();
     test_render_graph();
     test_rendering_device();
     test_spatial_nodes();
