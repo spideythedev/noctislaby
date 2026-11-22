@@ -2,6 +2,8 @@
 #include "io/resource.h"
 #include "io/resource_cache.h"
 #include "object/class_db.h"
+#include "math/aabb.h"
+#include "math/rect2.h"
 #include "math/vector2.h"
 #include "math/vector3.h"
 #include "math/vector4.h"
@@ -234,6 +236,29 @@ void test_variants() {
     expect(nle::Variant(std::int32_t{123}) == integer, "integer widths share Variant type");
 }
 
+void test_geometry() {
+    const nle::Rect2 first{{0, 0}, {10, 10}};
+    const nle::Rect2 second{{5, 5}, {10, 10}};
+
+    expect(first.has_point({9, 9}), "Rect2 contains interior point");
+    expect(!first.has_point({10, 10}), "Rect2 excludes far edge");
+    expect(first.intersects(second), "Rect2 intersection detection");
+    expect(first.intersection(second) == nle::Rect2{{5, 5}, {5, 5}},
+           "Rect2 intersection bounds");
+    expect(first.merge(second) == nle::Rect2{{0, 0}, {15, 15}},
+           "Rect2 merged bounds");
+
+    const nle::AABB box_a{{0, 0, 0}, {4, 4, 4}};
+    const nle::AABB box_b{{2, 2, 2}, {4, 4, 4}};
+
+    expect(box_a.has_point({1, 1, 1}), "AABB contains interior point");
+    expect(box_a.intersects(box_b), "AABB intersection detection");
+    expect(box_a.intersection(box_b) == nle::AABB{{2, 2, 2}, {2, 2, 2}},
+           "AABB intersection bounds");
+    expect(box_a.merge(box_b) == nle::AABB{{0, 0, 0}, {6, 6, 6}},
+           "AABB merged bounds");
+}
+
 void test_vectors() {
     const nle::Vector2 horizontal{3, 4};
     expect(horizontal.length() == nle::real_t{5}, "Vector2 length");
@@ -299,6 +324,7 @@ int main() {
     test_signals();
     test_string_names();
     test_variants();
+    test_geometry();
     test_vectors();
     test_memory();
 
