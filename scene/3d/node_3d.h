@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/math/transform3d.h"
+#include "math/transform3d.h"
 #include "scene/main/node.h"
 
 namespace nle {
