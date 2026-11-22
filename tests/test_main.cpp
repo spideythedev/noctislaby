@@ -7,6 +7,7 @@
 #include "object/object.h"
 #include "object/object_db.h"
 #include "object/ref_counted.h"
+#include "object/signal.h"
 #include "string/string_name.h"
 #include "variant/variant.h"
 
@@ -113,6 +114,41 @@ void test_reference_counting() {
     expect(!nle::ObjectDB::instance_exists(id), "released resource leaves object registry");
 }
 
+void test_signals() {
+    nle::Signal<int> signal;
+    int total = 0;
+
+    const nle::ConnectionID first = signal.connect(
+        [&total](const int value) { total += value; }
+    );
+    const nle::ConnectionID second = signal.connect(
+        [&total](const int value) { total += value * 2; }
+    );
+
+    expect(first != 0 && second != 0, "signal connections receive identifiers");
+    expect(signal.connection_count() == 2, "signal tracks active connections");
+
+    signal.emit(3);
+    expect(total == 9, "signal invokes connected callbacks");
+
+    expect(signal.disconnect(first), "signal disconnects existing callback");
+    expect(!signal.disconnect(first), "signal rejects duplicate disconnection");
+
+    signal.emit(2);
+    expect(total == 13, "disconnected callback is not invoked again");
+
+    nle::ConnectionID self_connection = 0;
+    int self_calls = 0;
+    self_connection = signal.connect([&](const int) {
+        ++self_calls;
+        static_cast<void>(signal.disconnect(self_connection));
+    });
+
+    signal.emit(1);
+    signal.emit(1);
+    expect(self_calls == 1, "callbacks can disconnect themselves during emission");
+}
+
 void test_string_names() {
     const nle::StringName first("RenderingServer");
     const nle::StringName second("RenderingServer");
@@ -210,6 +246,7 @@ int main() {
     test_class_db();
     test_object_registry();
     test_reference_counting();
+    test_signals();
     test_string_names();
     test_variants();
     test_vectors();
