@@ -28,6 +28,7 @@
 #include "scene/2d/node_2d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
+#include "scene/main/main_loop.h"
 #include "scene/main/scene_tree.h"
 #include "string/string_name.h"
 #include "variant/variant.h"
@@ -440,6 +441,57 @@ void test_spatial_nodes() {
            singular_child_3d_pointer, "singular 3D parent accepts child");
     expect(!singular_child_3d_pointer->set_global_position({1, 1, 1}),
            "Node3D rejects global position under singular parent transform");
+}
+
+void test_main_loop() {
+    std::vector<std::string> events;
+    auto root = std::make_unique<LifecycleNode>("Root", events);
+    nle::SceneTree tree;
+    expect(tree.set_root(std::move(root)), "main loop scene tree accepts root");
+    expect(tree.initialize(), "main loop scene tree initializes");
+
+    nle::MainLoop loop(tree);
+    nle::MainLoopFrameStats stats;
+    expect(loop.iteration(2.0 / 60.0, &stats), "main loop executes a valid frame");
+    expect(stats.frame_index == 1 && stats.physics_steps == 2,
+           "main loop advances fixed physics ticks");
+    expect(stats.dropped_physics_steps == 0,
+           "main loop does not drop physics steps within its budget");
+    expect(stats.frame_delta > 0.0 && stats.interpolation_alpha < 0.000001,
+           "main loop reports frame delta and interpolation state");
+    expect(events == std::vector<std::string>{
+        "Root.enter", "Root.ready", "Root.physics", "Root.physics", "Root.process"
+    }, "main loop runs fixed physics before frame processing");
+
+    events.clear();
+    expect(loop.iteration(0.5, &stats), "main loop accepts long frames");
+    expect(stats.frame_delta == 0.25 && stats.physics_steps == 8 &&
+           stats.dropped_physics_steps == 7,
+           "main loop clamps frame delta and bounds physics catch-up");
+    expect(events.size() == 9,
+           "main loop performs bounded physics and one process callback");
+
+    events.clear();
+    expect(loop.set_time_scale(0.0), "main loop supports paused time scale");
+    expect(loop.iteration(0.1, &stats), "main loop continues rendering while paused");
+    expect(stats.physics_steps == 0 && stats.frame_delta == 0.0,
+           "paused time scale stops simulation time");
+    expect(events == std::vector<std::string>{"Root.process"},
+           "paused main loop still processes a frame");
+
+    expect(!loop.set_physics_ticks_per_second(0),
+           "main loop rejects zero physics frequency");
+    expect(!loop.set_max_physics_steps_per_frame(0),
+           "main loop rejects zero catch-up budget");
+    expect(!loop.set_time_scale(-1.0),
+           "main loop rejects negative time scale");
+    expect(!loop.iteration(-0.1, &stats),
+           "main loop rejects negative frame delta");
+
+    loop.reset();
+    expect(loop.get_frame_index() == 0 && loop.get_interpolation_alpha() == 0.0,
+           "main loop reset clears frame and interpolation state");
+    tree.shutdown();
 }
 
 void test_scene_tree() {
@@ -1045,6 +1097,7 @@ int main() {
     test_rendering_device();
     test_spatial_nodes();
     test_scene_tree();
+    test_main_loop();
     test_error_codes();
     test_class_db();
     test_object_registry();
