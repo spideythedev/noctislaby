@@ -252,6 +252,11 @@ void test_physics_server_2d() {
     nle::RID box;
     expect(physics.create_body(box_description, box) == nle::ErrorCode::Ok,
            "2D physics creates a dynamic body");
+    nle::PhysicsBodyDescription2D invalid_mode = box_description;
+    invalid_mode.mode = static_cast<nle::PhysicsBodyMode2D>(255);
+    nle::RID invalid_body;
+    expect(physics.create_body(invalid_mode, invalid_body) == nle::ErrorCode::InvalidParameter,
+           "2D physics rejects unknown body modes");
     expect(physics.get_body_count() == 2, "2D physics tracks body count");
 
     expect(physics.step(1.0 / 60.0, {0, -9.8F}) == nle::ErrorCode::Ok,

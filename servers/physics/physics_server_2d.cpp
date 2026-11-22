@@ -31,10 +31,20 @@ ErrorCode PhysicsServer2D::create_body(
     if (!is_finite(description.position) || !is_finite(description.velocity) ||
         !is_finite(description.shape.position) || !is_finite(description.shape.size) ||
         description.shape.size.x <= 0 || description.shape.size.y <= 0 ||
+        (description.mode != PhysicsBodyMode2D::Static &&
+         description.mode != PhysicsBodyMode2D::Dynamic) ||
         !std::isfinite(static_cast<double>(description.mass)) ||
         !std::isfinite(static_cast<double>(description.restitution)) ||
         description.restitution < 0 || description.restitution > 1 ||
         (description.mode == PhysicsBodyMode2D::Dynamic && description.mass <= 0)) {
+        return ErrorCode::InvalidParameter;
+    }
+
+    const real_t inverse_mass = description.mode == PhysicsBodyMode2D::Dynamic
+        ? real_t{1} / description.mass
+        : real_t{0};
+    if (!std::isfinite(static_cast<double>(inverse_mass)) ||
+        (description.mode == PhysicsBodyMode2D::Dynamic && inverse_mass <= 0)) {
         return ErrorCode::InvalidParameter;
     }
 
@@ -64,9 +74,7 @@ ErrorCode PhysicsServer2D::create_body(
         description.shape,
         description.position,
         description.velocity,
-        description.mode == PhysicsBodyMode2D::Dynamic
-            ? real_t{1} / description.mass
-            : real_t{0},
+        inverse_mass,
         description.restitution,
         description.collision_layer,
         description.collision_mask
