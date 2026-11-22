@@ -14,6 +14,8 @@ target_include_directories(nle_core
         "${CMAKE_CURRENT_BINARY_DIR}/../generated"
 )
 
+set_target_properties(nle_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_compile_features(nle_core PUBLIC cxx_std_20)
 
 if(NLE_DOUBLE_PRECISION)
