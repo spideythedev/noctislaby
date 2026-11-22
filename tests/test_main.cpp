@@ -4,6 +4,7 @@
 #include "io/resource_cache.h"
 #include "io/resource_loader.h"
 #include "io/resource_saver.h"
+#include "io/resource_uid_registry.h"
 #include "object/class_db.h"
 #include "math/aabb.h"
 #include "math/basis.h"
@@ -692,6 +693,67 @@ void test_resources() {
            "resource change connection can be disconnected");
 }
 
+void test_resource_uid_registry() {
+    nle::ResourceUIDRegistry registry;
+    const nle::ResourceUID texture_uid{0x1020304050607080ULL};
+    const nle::ResourceUID scene_uid{0x8877665544332211ULL};
+
+    expect(registry.register_uid(texture_uid, "res://textures/stone.nleres"),
+           "UID registry registers a resource path");
+    expect(registry.register_uid(scene_uid, "res://scenes/world.nlescene"),
+           "UID registry registers a second resource path");
+    expect(!registry.register_uid({}, "res://invalid.nleres"),
+           "UID registry rejects the invalid UID");
+    expect(!registry.register_uid(texture_uid, "res://textures/other.nleres"),
+           "UID registry rejects UID collisions");
+    expect(!registry.register_uid(nle::ResourceUID{99}, "res://textures/stone.nleres"),
+           "UID registry rejects path collisions");
+    expect(registry.get_uid("res://textures/stone.nleres") == texture_uid,
+           "UID registry resolves path to UID");
+    expect(registry.get_path(scene_uid) == "res://scenes/world.nlescene",
+           "UID registry resolves UID to path");
+    expect(registry.size() == 2, "UID registry tracks registered resources");
+
+    const std::filesystem::path file_path =
+        std::filesystem::temp_directory_path() / "noctislaby-resource-uids-test.bin";
+    std::error_code filesystem_error;
+    std::filesystem::remove(file_path, filesystem_error);
+    expect(registry.save(file_path), "UID registry saves its versioned database");
+
+    nle::ResourceUIDRegistry restored;
+    expect(restored.register_uid(nle::ResourceUID{7}, "res://temporary.nleres"),
+           "UID registry prepares transactional load test");
+    expect(restored.load(file_path), "UID registry loads its database");
+    expect(restored.size() == 2, "UID registry replaces old state after load");
+    expect(restored.get_uid("res://textures/stone.nleres") == texture_uid,
+           "UID registry preserves UID mappings across save and load");
+    expect(restored.get_path(scene_uid) == "res://scenes/world.nlescene",
+           "UID registry preserves paths across save and load");
+
+    const std::filesystem::path corrupt_path =
+        std::filesystem::temp_directory_path() / "noctislaby-resource-uids-corrupt.bin";
+    {
+        auto corrupt = nle::FileAccess::open(corrupt_path, nle::FileMode::Write);
+        expect(static_cast<bool>(corrupt), "UID registry opens corrupt fixture");
+        const std::array<std::byte, 4> invalid_data{
+            std::byte{'B'}, std::byte{'A'}, std::byte{'D'}, std::byte{'!'}
+        };
+        expect(corrupt->write(invalid_data), "UID registry writes corrupt fixture");
+    }
+    expect(!restored.load(corrupt_path), "UID registry rejects corrupt databases");
+    expect(restored.size() == 2 &&
+           restored.get_uid("res://textures/stone.nleres") == texture_uid,
+           "failed UID database load leaves existing state unchanged");
+
+    expect(restored.unregister_uid(texture_uid), "UID registry unregisters a resource");
+    expect(!restored.unregister_uid(texture_uid), "UID registry rejects duplicate removal");
+    expect(!restored.get_uid("res://textures/stone.nleres").is_valid(),
+           "UID registry removes both lookup directions");
+
+    std::filesystem::remove(file_path, filesystem_error);
+    std::filesystem::remove(corrupt_path, filesystem_error);
+}
+
 void test_signals() {
     nle::Signal<int> signal;
     int total = 0;
@@ -991,6 +1053,7 @@ int main() {
     test_resource_saver();
     test_resource_loader();
     test_resources();
+    test_resource_uid_registry();
     test_signals();
     test_string_names();
     test_variants();
