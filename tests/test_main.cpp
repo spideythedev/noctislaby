@@ -28,6 +28,7 @@
 #include "servers/rendering/null/null_rendering_device.h"
 #include "servers/rendering/rendering_server.h"
 #include "servers/rendering/render_graph.h"
+#include "servers/input/input_server.h"
 #include "scene/2d/node_2d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
@@ -41,6 +42,7 @@
 #include <atomic>
 #include <barrier>
 #include <cmath>
+#include <limits>
 #include <filesystem>
 #include <cstdint>
 #include <cstdlib>
@@ -175,6 +177,64 @@ public:
 private:
     int* destruction_count_;
 };
+
+void test_input_server() {
+    nle::InputServer input;
+    const nle::InputControl key_a{nle::InputEventType::Key, 0, 65};
+    int event_count = 0;
+    const nle::ConnectionID connection = input.event_signal().connect(
+        [&event_count](const nle::InputEvent&) { ++event_count; }
+    );
+
+    nle::InputEvent key_press;
+    key_press.type = nle::InputEventType::Key;
+    key_press.code = 65;
+    key_press.pressed = true;
+    expect(input.push_event(key_press), "input server queues key press");
+
+    nle::InputEvent mouse_motion;
+    mouse_motion.type = nle::InputEventType::MouseMotion;
+    mouse_motion.position = {120, 240};
+    mouse_motion.relative = {5, -3};
+    expect(input.push_event(mouse_motion), "input server queues mouse motion");
+    expect(input.get_queued_event_count() == 2,
+           "input server reports queued event count");
+
+    input.process_frame();
+    expect(input.is_pressed(key_a) && input.is_just_pressed(key_a),
+           "input server updates pressed and just-pressed state");
+    expect(input.get_mouse_position() == nle::Vector2{120, 240},
+           "input server updates mouse position");
+    expect(event_count == 2 && input.get_queued_event_count() == 0,
+           "input server emits drained events outside its queue");
+
+    input.process_frame();
+    expect(input.is_pressed(key_a) && !input.is_just_pressed(key_a),
+           "input server clears edge state at the next frame");
+
+    nle::InputEvent key_release = key_press;
+    key_release.pressed = false;
+    expect(input.push_event(key_release), "input server queues key release");
+    input.process_frame();
+    expect(!input.is_pressed(key_a) && input.is_just_released(key_a),
+           "input server updates just-released state");
+
+    nle::InputEvent invalid_axis;
+    invalid_axis.type = nle::InputEventType::JoypadAxis;
+    invalid_axis.device = 1;
+    invalid_axis.code = 0;
+    invalid_axis.value = std::numeric_limits<nle::real_t>::infinity();
+    expect(!input.push_event(invalid_axis),
+           "input server rejects non-finite controller axis values");
+
+    nle::InputEvent invalid_type;
+    invalid_type.type = static_cast<nle::InputEventType>(255);
+    expect(!input.push_event(invalid_type),
+           "input server rejects unknown event types");
+
+    expect(input.event_signal().disconnect(connection),
+           "input event listener can be disconnected");
+}
 
 void test_render_graph() {
     nle::RenderGraph graph;
@@ -1300,6 +1360,7 @@ void test_memory() {
 } // namespace
 
 int main() {
+    test_input_server();
     test_render_graph();
     test_rendering_device();
     test_spatial_nodes();

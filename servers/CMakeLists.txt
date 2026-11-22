@@ -1,4 +1,5 @@
 add_library(nle_servers STATIC
+    input/input_server.cpp
     rendering/rendering_server.cpp
     rendering/render_graph.cpp
     rendering/null/null_rendering_device.cpp
