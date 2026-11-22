@@ -1,4 +1,6 @@
 add_library(nle_scene STATIC
+    2d/node_2d.cpp
+    3d/node_3d.cpp
     main/node.cpp
     main/scene_tree.cpp
 )
