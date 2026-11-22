@@ -1,5 +1,6 @@
 #pragma once
 
+#include "error/error.h"
 #include "resource.h"
 
 #include <string>
