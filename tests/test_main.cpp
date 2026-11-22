@@ -1,4 +1,5 @@
 #include "error/error.h"
+#include "io/resource.h"
 #include "object/class_db.h"
 #include "math/vector2.h"
 #include "math/vector3.h"
@@ -112,6 +113,35 @@ void test_reference_counting() {
 
     expect(destruction_count == 1, "last reference destroys resource");
     expect(!nle::ObjectDB::instance_exists(id), "released resource leaves object registry");
+}
+
+void test_resources() {
+    nle::Ref<nle::Resource> resource = nle::make_ref<nle::Resource>();
+    int changed_count = 0;
+
+    const nle::ConnectionID connection = resource->changed_signal().connect(
+        [&changed_count] { ++changed_count; }
+    );
+
+    resource->set_path("res://textures/stone.png");
+    resource->set_name("Stone");
+    resource->set_uid(nle::ResourceUID{42});
+
+    expect(resource->get_class_name() == std::string_view("Resource"),
+           "resource reports its engine class");
+    expect(resource->get_path() == "res://textures/stone.png", "resource path");
+    expect(resource->get_name() == "Stone", "resource name");
+    expect(resource->get_uid() == nle::ResourceUID{42}, "resource UID");
+    expect(changed_count == 3, "resource metadata changes emit notifications");
+
+    resource->set_path("res://textures/stone.png");
+    expect(changed_count == 3, "unchanged resource path does not emit");
+
+    resource->set_local_to_scene(true);
+    expect(resource->is_local_to_scene(), "resource local-to-scene flag");
+
+    expect(resource->changed_signal().disconnect(connection),
+           "resource change connection can be disconnected");
 }
 
 void test_signals() {
@@ -246,6 +276,7 @@ int main() {
     test_class_db();
     test_object_registry();
     test_reference_counting();
+    test_resources();
     test_signals();
     test_string_names();
     test_variants();
