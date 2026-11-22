@@ -4,6 +4,7 @@
 #include <atomic>
 #include <bit>
 #include <cstring>
+#include <exception>
 #include <new>
 #include <stdexcept>
 
@@ -66,7 +67,12 @@ void Memory::deallocate(
         return;
     }
 
-    const std::size_t actual_alignment = normalize_alignment(alignment);
+    if (!std::has_single_bit(alignment)) {
+        std::terminate();
+    }
+
+    const std::size_t actual_alignment =
+        std::max(alignment, alignof(std::max_align_t));
     ::operator delete(memory, std::align_val_t(actual_alignment));
 
     active_allocations.fetch_sub(1, std::memory_order_relaxed);
