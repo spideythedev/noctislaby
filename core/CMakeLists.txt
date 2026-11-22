@@ -2,6 +2,7 @@ add_library(nle_core STATIC
     error/error.cpp
     logging/logger.cpp
     memory/memory.cpp
+    object/class_db.cpp
     object/object.cpp
     object/object_db.cpp
     string/string_name.cpp
