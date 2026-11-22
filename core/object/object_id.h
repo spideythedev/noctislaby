@@ -16,7 +16,7 @@ struct ObjectID final {
         return is_valid();
     }
 
-    friend constexpr bool operator==(ObjectID, ObjectID) noexcept = default;
+    friend constexpr bool operator==(const ObjectID&, const ObjectID&) noexcept = default;
 };
 
 struct ObjectIDHash final {
