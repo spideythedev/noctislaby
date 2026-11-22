@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <mutex>
+#include <span>
 
 namespace nle {
 
@@ -20,8 +21,22 @@ public:
 
     [[nodiscard]] bool is_initialized() const noexcept;
     [[nodiscard]] RenderingDeviceInfo get_device_info() const noexcept;
-    [[nodiscard]] RenderingDevice* get_device() noexcept;
-    [[nodiscard]] const RenderingDevice* get_device() const noexcept;
+
+    [[nodiscard]] ErrorCode create_buffer(
+        const BufferDescription& description,
+        RID& result
+    );
+    [[nodiscard]] ErrorCode update_buffer(
+        RID buffer,
+        std::size_t offset,
+        std::span<const std::byte> data
+    );
+    [[nodiscard]] ErrorCode read_buffer(
+        RID buffer,
+        std::size_t offset,
+        std::span<std::byte> destination
+    ) const;
+    [[nodiscard]] ErrorCode free_buffer(RID buffer);
 
 private:
     mutable std::mutex mutex_;
