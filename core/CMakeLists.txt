@@ -4,6 +4,7 @@ add_library(nle_core STATIC
     io/resource.cpp
     io/resource_cache.cpp
     io/resource_loader.cpp
+    io/resource_saver.cpp
     logging/logger.cpp
     memory/memory.cpp
     object/class_db.cpp
