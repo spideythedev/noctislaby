@@ -2,6 +2,7 @@
 #include "io/file_access.h"
 #include "io/resource.h"
 #include "io/resource_cache.h"
+#include "io/resource_loader.h"
 #include "object/class_db.h"
 #include "math/aabb.h"
 #include "math/basis.h"
@@ -29,7 +30,10 @@
 #include <cstdlib>
 #include <iostream>
 #include <numbers>
+#include <memory>
+#include <string>
 #include <string_view>
+#include <vector>
 #include <unordered_map>
 
 namespace {
@@ -49,6 +53,24 @@ public:
 };
 
 class TestTexture final : public nle::Resource {};
+
+class TestFormatLoader final : public nle::ResourceFormatLoader {
+public:
+    [[nodiscard]] std::vector<std::string> get_recognized_extensions() const override {
+        return {"nleres"};
+    }
+
+    [[nodiscard]] nle::Ref<nle::Resource> load(
+        const std::string_view,
+        nle::ErrorCode& error
+    ) override {
+        ++load_count;
+        error = nle::ErrorCode::Ok;
+        return nle::make_ref<nle::Resource>();
+    }
+
+    int load_count = 0;
+};
 
 class TestResource final : public nle::RefCounted {
 public:
@@ -167,6 +189,34 @@ void test_file_access() {
     }
 
     std::filesystem::remove(path, filesystem_error);
+}
+
+void test_resource_loader() {
+    nle::ResourceLoader loader;
+    auto format_loader = std::make_shared<TestFormatLoader>();
+
+    expect(loader.add_format_loader(format_loader), "resource format loader registers");
+    expect(!loader.add_format_loader(format_loader), "duplicate format loader is rejected");
+
+    nle::ErrorCode error = nle::ErrorCode::Failed;
+    nle::Ref<nle::Resource> first = loader.load("res://materials/test.NLERES", &error);
+
+    expect(first != nullptr, "resource loader dispatches by extension");
+    expect(error == nle::ErrorCode::Ok, "resource load reports success");
+    expect(first->get_path() == "res://materials/test.NLERES",
+           "resource loader assigns source path");
+
+    nle::Ref<nle::Resource> second = loader.load("res://materials/test.NLERES", &error);
+    expect(second.get() == first.get(), "resource loader returns cached instance");
+    expect(format_loader->load_count == 1, "resource cache avoids duplicate format loads");
+
+    expect(!loader.load("res://materials/unknown.bin", &error),
+           "unsupported resource extension fails");
+    expect(error == nle::ErrorCode::NotFound, "unsupported extension reports NotFound");
+
+    expect(!loader.load("", &error), "empty resource path fails");
+    expect(error == nle::ErrorCode::InvalidParameter,
+           "empty resource path reports InvalidParameter");
 }
 
 void test_resources() {
@@ -498,6 +548,7 @@ int main() {
     test_object_registry();
     test_reference_counting();
     test_file_access();
+    test_resource_loader();
     test_resources();
     test_signals();
     test_string_names();
