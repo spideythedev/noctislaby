@@ -21,6 +21,8 @@
 #include "object/object_db.h"
 #include "object/ref_counted.h"
 #include "object/signal.h"
+#include "scene/main/node.h"
+#include "scene/main/scene_tree.h"
 #include "string/string_name.h"
 #include "variant/variant.h"
 
@@ -54,6 +56,36 @@ public:
 };
 
 class TestTexture final : public nle::Resource {};
+
+class LifecycleNode final : public nle::Node {
+public:
+    LifecycleNode(std::string name, std::vector<std::string>& events)
+        : Node(std::move(name)), events_(events) {}
+
+protected:
+    void _enter_tree() override {
+        events_.push_back(std::string(get_name()) + ".enter");
+    }
+
+    void _ready() override {
+        events_.push_back(std::string(get_name()) + ".ready");
+    }
+
+    void _process(const double) override {
+        events_.push_back(std::string(get_name()) + ".process");
+    }
+
+    void _physics_process(const double) override {
+        events_.push_back(std::string(get_name()) + ".physics");
+    }
+
+    void _exit_tree() override {
+        events_.push_back(std::string(get_name()) + ".exit");
+    }
+
+private:
+    std::vector<std::string>& events_;
+};
 
 class TestFormatSaver final : public nle::ResourceFormatSaver {
 public:
@@ -108,6 +140,55 @@ public:
 private:
     int* destruction_count_;
 };
+
+void test_scene_tree() {
+    std::vector<std::string> events;
+    auto root = std::make_unique<LifecycleNode>("Root", events);
+    auto child = std::make_unique<LifecycleNode>("Child", events);
+
+    LifecycleNode* child_pointer = child.get();
+    expect(root->add_child(std::move(child)) == child_pointer,
+           "node accepts detached child");
+    expect(root->get_child_count() == 1, "node stores child ownership");
+    expect(child_pointer->get_path() == "/Root/Child", "node path follows hierarchy");
+    expect(child_pointer->set_name("Child"), "node accepts unchanged name");
+
+    auto duplicate = std::make_unique<LifecycleNode>("Child", events);
+    expect(root->add_child(std::move(duplicate)) == nullptr,
+           "node rejects duplicate sibling names");
+
+    nle::SceneTree tree;
+    expect(tree.set_root(std::move(root)), "scene tree accepts detached root");
+    expect(tree.initialize(), "scene tree initializes");
+    expect(tree.is_initialized(), "scene tree reports initialized");
+
+    const std::vector<std::string> lifecycle_expected{
+        "Root.enter", "Child.enter", "Child.ready", "Root.ready"
+    };
+    expect(events == lifecycle_expected, "scene tree enter and ready ordering");
+
+    events.clear();
+    tree.process_frame(1.0 / 60.0);
+    expect(events == std::vector<std::string>{"Root.process", "Child.process"},
+           "scene tree processes parent before child");
+
+    events.clear();
+    tree.physics_frame(1.0 / 60.0);
+    expect(events == std::vector<std::string>{"Root.physics", "Child.physics"},
+           "scene tree physics processes parent before child");
+
+    events.clear();
+    std::unique_ptr<nle::Node> removed = tree.get_root()->remove_child(child_pointer);
+    expect(removed.get() == child_pointer, "node returns removed child ownership");
+    expect(events == std::vector<std::string>{"Child.exit"},
+           "removed node exits the scene tree");
+
+    events.clear();
+    tree.shutdown();
+    expect(events == std::vector<std::string>{"Root.exit"},
+           "scene tree shuts down root lifecycle");
+    expect(!tree.is_initialized(), "scene tree reports shutdown");
+}
 
 void test_error_codes() {
     using nle::ErrorCode;
@@ -585,6 +666,7 @@ void test_memory() {
 } // namespace
 
 int main() {
+    test_scene_tree();
     test_error_codes();
     test_class_db();
     test_object_registry();
