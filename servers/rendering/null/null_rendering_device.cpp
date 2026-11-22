@@ -48,46 +48,43 @@ ErrorCode NullRenderingDevice::create_buffer(
     }
 
     std::uint32_t index = 0;
-    bool new_slot = false;
+    if (free_slots_.empty()) {
+        if (slots_.size() >= std::numeric_limits<std::uint32_t>::max()) {
+            return ErrorCode::OutOfMemory;
+        }
 
-    try {
-        if (free_slots_.empty()) {
-            if (slots_.size() >= std::numeric_limits<std::uint32_t>::max()) {
-                return ErrorCode::OutOfMemory;
-            }
-
+        try {
             free_slots_.reserve(slots_.size() + 1);
-            index = static_cast<std::uint32_t>(slots_.size());
             slots_.emplace_back();
-            new_slot = true;
-        } else {
-            index = free_slots_.back();
-            free_slots_.pop_back();
+        } catch (const std::bad_alloc&) {
+            return ErrorCode::OutOfMemory;
         }
 
-        Slot& slot = slots_[index];
+        index = static_cast<std::uint32_t>(slots_.size() - 1);
+    } else {
+        index = free_slots_.back();
+        free_slots_.pop_back();
+    }
+
+    Slot& slot = slots_[index];
+    try {
         slot.buffer.bytes.assign(description.size, std::byte{0});
-        std::copy(
-            description.initial_data.begin(),
-            description.initial_data.end(),
-            slot.buffer.bytes.begin()
-        );
-        slot.buffer.usage = description.usage;
-        slot.occupied = true;
-        ++buffer_count_;
-
-        result = RID::from_parts(index, slot.generation);
-        return ErrorCode::Ok;
     } catch (const std::bad_alloc&) {
-        if (new_slot) {
-            free_slots_.push_back(index);
-        } else if (!free_slots_.empty() && free_slots_.back() == index) {
-            // The slot was already returned to the free list by another path.
-        } else {
-            free_slots_.push_back(index);
-        }
+        free_slots_.push_back(index);
         return ErrorCode::OutOfMemory;
     }
+
+    std::copy(
+        description.initial_data.begin(),
+        description.initial_data.end(),
+        slot.buffer.bytes.begin()
+    );
+    slot.buffer.usage = description.usage;
+    slot.occupied = true;
+    ++buffer_count_;
+
+    result = RID::from_parts(index, slot.generation);
+    return ErrorCode::Ok;
 }
 
 ErrorCode NullRenderingDevice::update_buffer(
