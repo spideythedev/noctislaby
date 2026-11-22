@@ -23,6 +23,7 @@
 #include "object/signal.h"
 #include "servers/rendering/null/null_rendering_device.h"
 #include "servers/rendering/rendering_server.h"
+#include "servers/rendering/render_graph.h"
 #include "scene/2d/node_2d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
@@ -146,6 +147,83 @@ public:
 private:
     int* destruction_count_;
 };
+
+void test_render_graph() {
+    nle::RenderGraph graph;
+    nle::RenderGraphResourceId source = nle::RenderGraph::InvalidResource;
+    nle::RenderGraphResourceId intermediate = nle::RenderGraph::InvalidResource;
+    nle::RenderGraphResourceId output = nle::RenderGraph::InvalidResource;
+
+    expect(graph.create_resource("swapchain", true, source) == nle::ErrorCode::Ok,
+           "render graph imports external resources");
+    expect(graph.create_resource("scene-color", false, intermediate) == nle::ErrorCode::Ok,
+           "render graph creates transient resources");
+    expect(graph.create_resource("composite", false, output) == nle::ErrorCode::Ok,
+           "render graph creates output resources");
+
+    const std::array<nle::RenderGraphResourceUse, 1> geometry_uses{{
+        {source, nle::RenderGraphAccess::Read}
+    }};
+    const std::array<nle::RenderGraphResourceUse, 2> lighting_uses{{
+        {source, nle::RenderGraphAccess::Read},
+        {intermediate, nle::RenderGraphAccess::Write}
+    }};
+    const std::array<nle::RenderGraphResourceUse, 2> composite_uses{{
+        {intermediate, nle::RenderGraphAccess::Read},
+        {output, nle::RenderGraphAccess::Write}
+    }};
+
+    nle::RenderGraphPassId geometry = nle::RenderGraph::InvalidPass;
+    nle::RenderGraphPassId lighting = nle::RenderGraph::InvalidPass;
+    nle::RenderGraphPassId composite = nle::RenderGraph::InvalidPass;
+    expect(graph.add_pass("geometry", geometry_uses, geometry) == nle::ErrorCode::Ok,
+           "render graph adds geometry pass");
+    expect(graph.add_pass("lighting", lighting_uses, lighting) == nle::ErrorCode::Ok,
+           "render graph adds lighting pass");
+    expect(graph.add_pass("composite", composite_uses, composite) == nle::ErrorCode::Ok,
+           "render graph adds composite pass");
+
+    std::vector<nle::RenderGraphPassId> order;
+    expect(graph.compile(order) == nle::ErrorCode::Ok,
+           "render graph compiles resource dependencies");
+    expect(order == std::vector<nle::RenderGraphPassId>{geometry, lighting, composite},
+           "render graph produces deterministic dependency order");
+
+    nle::RenderGraph invalid_read;
+    nle::RenderGraphResourceId transient = 0;
+    expect(invalid_read.create_resource("uninitialized", false, transient) ==
+           nle::ErrorCode::Ok, "render graph creates uninitialized transient");
+    const std::array<nle::RenderGraphResourceUse, 1> read_before_write{{
+        {transient, nle::RenderGraphAccess::Read}
+    }};
+    nle::RenderGraphPassId read_pass = 0;
+    expect(invalid_read.add_pass("invalid-read", read_before_write, read_pass) ==
+           nle::ErrorCode::Ok, "render graph accepts pass declaration");
+    expect(invalid_read.compile(order) == nle::ErrorCode::InvalidState && order.empty(),
+           "render graph rejects transient read before first write");
+
+    nle::RenderGraph cyclic;
+    nle::RenderGraphPassId first = 0;
+    nle::RenderGraphPassId second = 0;
+    expect(cyclic.add_pass("first", {}, first) == nle::ErrorCode::Ok,
+           "render graph adds first independent pass");
+    expect(cyclic.add_pass("second", {}, second) == nle::ErrorCode::Ok,
+           "render graph adds second independent pass");
+    expect(cyclic.add_dependency(first, second) == nle::ErrorCode::Ok,
+           "render graph adds explicit dependency");
+    expect(cyclic.add_dependency(second, first) == nle::ErrorCode::Ok,
+           "render graph accepts dependency for cycle validation");
+    expect(cyclic.compile(order) == nle::ErrorCode::InvalidState && order.empty(),
+           "render graph detects dependency cycles");
+
+    expect(cyclic.add_dependency(first, first) == nle::ErrorCode::InvalidParameter,
+           "render graph rejects self dependency");
+    expect(graph.get_resource_count() == 3 && graph.get_pass_count() == 3,
+           "render graph reports declared resource and pass counts");
+    graph.clear();
+    expect(graph.get_resource_count() == 0 && graph.get_pass_count() == 0,
+           "render graph clears declarations");
+}
 
 void test_rendering_device() {
     nle::NullRenderingDevice device;
@@ -860,6 +938,7 @@ void test_memory() {
 } // namespace
 
 int main() {
+    test_render_graph();
     test_rendering_device();
     test_spatial_nodes();
     test_scene_tree();

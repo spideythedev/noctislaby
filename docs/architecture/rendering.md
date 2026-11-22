@@ -53,3 +53,17 @@ The next rendering milestones are:
 7. Add Direct3D 12 and Metal after the API contract is stable.
 
 Graphics dependencies must be evaluated and their licenses recorded before they are vendored.
+
+
+## Render graph
+
+The render graph is a backend-neutral frame-planning layer. Passes declare resource reads and writes; compilation derives execution dependencies and returns a stable topological order.
+
+- Imported resources may be read before a graph pass writes them.
+- Transient resources must be written before they are read.
+- A write depends on the previous writer and all readers since that writer, preventing write-after-read hazards.
+- Read/write access requires an initialized resource and becomes the new writer.
+- Explicit pass dependencies support ordering that is not expressed through resource access.
+- Duplicate resource declarations in one pass, invalid identifiers, self-dependencies and dependency cycles are rejected.
+
+The current graph compiles scheduling metadata only. It does not submit GPU commands, allocate physical GPU resources, insert API barriers, or perform transient-resource aliasing. Those responsibilities belong to later backend and execution layers.

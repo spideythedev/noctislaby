@@ -64,7 +64,7 @@ The current native foundation includes:
 - 2D/3D vectors, rectangles, AABBs, planes, colors, quaternions, bases and affine transforms.
 - Binary file access, resource metadata, resource IDs, resource caching, and pluggable format loader/saver dispatch.
 - Node ownership, scene-tree lifecycle, frame/physics callbacks, and transformable Node2D/Node3D types.
-- A backend-neutral rendering server, generation-safe resource identifiers, and a null rendering device with buffer resource operations.
+- A backend-neutral rendering server, generation-safe resource identifiers, a null rendering device with buffer resource operations, and a render graph that validates resource hazards and compiles deterministic pass order.
 - Automated core, resource, scene and C-ABI tests.
 
 The foundation is intentionally not presented as full engine parity.
