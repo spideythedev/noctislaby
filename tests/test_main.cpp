@@ -7,6 +7,7 @@
 #include "object/object_db.h"
 #include "object/ref_counted.h"
 #include "string/string_name.h"
+#include "variant/variant.h"
 
 #include <cmath>
 #include <cstdint>
@@ -101,6 +102,26 @@ void test_string_names() {
     expect(names.at(second) == 42, "string names work as hash map keys");
 }
 
+void test_variants() {
+    const nle::Variant empty;
+    const nle::Variant boolean(true);
+    const nle::Variant integer(std::int64_t{123});
+    const nle::Variant floating(nle::real_t{0.5F});
+    const nle::Variant text("NoctisLaby");
+    const nle::Variant vector(nle::Vector3{1, 2, 3});
+
+    expect(empty.is_nil(), "default Variant is nil");
+    expect(empty.get_type() == nle::Variant::Type::Nil, "nil Variant type");
+    expect(boolean.get_type() == nle::Variant::Type::Bool, "boolean Variant type");
+    expect(*boolean.get_if<bool>(), "boolean Variant value");
+    expect(integer.get_type() == nle::Variant::Type::Int, "integer Variant type");
+    expect(*integer.get_if<std::int64_t>() == 123, "integer Variant value");
+    expect(floating.get_type() == nle::Variant::Type::Float, "floating Variant type");
+    expect(text.to_string() == "NoctisLaby", "string Variant formatting");
+    expect(vector.to_string() == "(1, 2, 3)", "Vector3 Variant formatting");
+    expect(nle::Variant(std::int32_t{123}) == integer, "integer widths share Variant type");
+}
+
 void test_vectors() {
     const nle::Vector2 horizontal{3, 4};
     expect(horizontal.length() == nle::real_t{5}, "Vector2 length");
@@ -162,6 +183,7 @@ int main() {
     test_object_registry();
     test_reference_counting();
     test_string_names();
+    test_variants();
     test_vectors();
     test_memory();
 
