@@ -56,12 +56,14 @@ bool read_integer(
     return true;
 }
 
+using RealBits = std::conditional_t<
+    sizeof(real_t) == sizeof(std::uint32_t),
+    std::uint32_t,
+    std::uint64_t
+>;
+
 void append_real(std::vector<std::byte>& output, const real_t value) {
-    if constexpr (sizeof(real_t) == sizeof(std::uint32_t)) {
-        append_integer(output, std::bit_cast<std::uint32_t>(value));
-    } else {
-        append_integer(output, std::bit_cast<std::uint64_t>(value));
-    }
+    append_integer(output, std::bit_cast<RealBits>(value));
 }
 
 bool read_real(
@@ -69,19 +71,11 @@ bool read_real(
     std::size_t& offset,
     real_t& value
 ) noexcept {
-    if constexpr (sizeof(real_t) == sizeof(std::uint32_t)) {
-        std::uint32_t bits = 0;
-        if (!read_integer(input, offset, bits)) {
-            return false;
-        }
-        value = std::bit_cast<real_t>(bits);
-    } else {
-        std::uint64_t bits = 0;
-        if (!read_integer(input, offset, bits)) {
-            return false;
-        }
-        value = std::bit_cast<real_t>(bits);
+    RealBits bits = 0;
+    if (!read_integer(input, offset, bits)) {
+        return false;
     }
+    value = std::bit_cast<real_t>(bits);
     return true;
 }
 
