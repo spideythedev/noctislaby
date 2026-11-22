@@ -29,17 +29,20 @@ public:
     }
 
     bool unreference() noexcept {
-        const std::uint32_t previous =
-            reference_count_.fetch_sub(1, std::memory_order_acq_rel);
+        std::uint32_t count = reference_count_.load(std::memory_order_relaxed);
 
-        if (previous == 0) {
-            reference_count_.fetch_add(1, std::memory_order_relaxed);
-            return false;
-        }
+        while (count != 0) {
+            if (reference_count_.compare_exchange_weak(
+                    count, count - 1,
+                    std::memory_order_acq_rel,
+                    std::memory_order_relaxed)) {
+                if (count == 1) {
+                    delete this;
+                    return true;
+                }
 
-        if (previous == 1) {
-            delete this;
-            return true;
+                return false;
+            }
         }
 
         return false;
@@ -68,6 +71,12 @@ public:
     }
 
     Ref(const Ref& other) : object_(other.object_) {
+        retain();
+    }
+
+    template <typename U>
+    requires std::derived_from<U, T>
+    Ref(const Ref<U>& other) : object_(other.get()) {
         retain();
     }
 
