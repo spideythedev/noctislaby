@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/object/object.h"
-#include "core/object/signal.h"
+#include "object/object.h"
+#include "object/signal.h"
 
 #include <cstddef>
 #include <memory>
