@@ -1,9 +1,11 @@
 #include "error/error.h"
+#include "memory/memory.h"
 #include "object/object.h"
 #include "object/object_db.h"
 #include "object/ref_counted.h"
 #include "string/string_name.h"
 
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
@@ -95,6 +97,36 @@ void test_string_names() {
     expect(names.at(second) == 42, "string names work as hash map keys");
 }
 
+void test_memory() {
+    const nle::MemoryStats before = nle::Memory::get_stats();
+    auto* memory = static_cast<unsigned char*>(nle::Memory::allocate(64, 64));
+
+    expect(reinterpret_cast<std::uintptr_t>(memory) % 64 == 0,
+           "allocation satisfies requested alignment");
+    expect(nle::Memory::get_stats().active_allocations == before.active_allocations + 1,
+           "allocation increments active allocation count");
+    expect(nle::Memory::get_stats().allocated_bytes == before.allocated_bytes + 64,
+           "allocation increments tracked byte count");
+
+    for (std::size_t index = 0; index < 64; ++index) {
+        memory[index] = static_cast<unsigned char>(index);
+    }
+
+    memory = static_cast<unsigned char*>(nle::Memory::reallocate(memory, 64, 128, 64));
+    for (std::size_t index = 0; index < 64; ++index) {
+        expect(memory[index] == static_cast<unsigned char>(index),
+               "reallocation preserves existing bytes");
+    }
+
+    nle::Memory::deallocate(memory, 128, 64);
+
+    const nle::MemoryStats after = nle::Memory::get_stats();
+    expect(after.active_allocations == before.active_allocations,
+           "deallocation restores active allocation count");
+    expect(after.allocated_bytes == before.allocated_bytes,
+           "deallocation restores tracked byte count");
+}
+
 } // namespace
 
 int main() {
@@ -102,6 +134,7 @@ int main() {
     test_object_registry();
     test_reference_counting();
     test_string_names();
+    test_memory();
 
     std::cout << "All NoctisLaby core tests passed.\n";
     return EXIT_SUCCESS;
