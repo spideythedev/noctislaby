@@ -1,4 +1,5 @@
 add_library(nle_servers STATIC
+    physics/physics_server_2d.cpp
     input/input_server.cpp
     input/input_map.cpp
     rendering/rendering_server.cpp

@@ -30,6 +30,7 @@
 #include "servers/rendering/render_graph.h"
 #include "servers/input/input_server.h"
 #include "servers/input/input_map.h"
+#include "servers/physics/physics_server_2d.h"
 #include "scene/2d/node_2d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
@@ -231,6 +232,64 @@ void test_input_map() {
            "input map removes an action");
     expect(!input_map.has_action("jump"),
            "input map no longer reports removed action");
+}
+
+void test_physics_server_2d() {
+    nle::PhysicsServer2D physics;
+    nle::PhysicsBodyDescription2D floor_description;
+    floor_description.mode = nle::PhysicsBodyMode2D::Static;
+    floor_description.shape = {{0, 0}, {20, 1}};
+    nle::RID floor;
+    expect(physics.create_body(floor_description, floor) == nle::ErrorCode::Ok,
+           "2D physics creates a static floor");
+
+    nle::PhysicsBodyDescription2D box_description;
+    box_description.mode = nle::PhysicsBodyMode2D::Dynamic;
+    box_description.shape = {{0, 0}, {1, 1}};
+    box_description.position = {2, 0.5F};
+    box_description.velocity = {0, -1};
+    box_description.mass = 1;
+    nle::RID box;
+    expect(physics.create_body(box_description, box) == nle::ErrorCode::Ok,
+           "2D physics creates a dynamic body");
+    expect(physics.get_body_count() == 2, "2D physics tracks body count");
+
+    expect(physics.step(1.0 / 60.0, {0, -9.8F}) == nle::ErrorCode::Ok,
+           "2D physics advances a simulation step");
+    nle::PhysicsBodyState2D state;
+    expect(physics.get_body_state(box, state) == nle::ErrorCode::Ok,
+           "2D physics returns body state");
+    expect(state.world_bounds.position.y >= 0.99F,
+           "2D physics resolves dynamic body penetration against static floor");
+    expect(state.velocity.y >= -0.001F,
+           "2D physics removes velocity into the collision normal");
+
+    nle::PhysicsBodyDescription2D falling_description;
+    falling_description.mode = nle::PhysicsBodyMode2D::Dynamic;
+    falling_description.shape = {{0, 0}, {1, 1}};
+    falling_description.position = {30, 10};
+    falling_description.mass = 2;
+    nle::RID falling;
+    expect(physics.create_body(falling_description, falling) == nle::ErrorCode::Ok,
+           "2D physics creates a separate falling body");
+    expect(physics.step(0.1, {0, -10}) == nle::ErrorCode::Ok,
+           "2D physics integrates gravity");
+    expect(physics.get_body_state(falling, state) == nle::ErrorCode::Ok &&
+           state.velocity.y < 0 && state.position.y < 10,
+           "2D physics updates velocity and position under gravity");
+
+    expect(physics.step(0.5, {0, -9.8F}) == nle::ErrorCode::InvalidParameter,
+           "2D physics rejects excessive variable steps");
+    expect(physics.set_body_velocity(falling, {
+        std::numeric_limits<nle::real_t>::infinity(), 0
+    }) == nle::ErrorCode::InvalidParameter,
+           "2D physics rejects non-finite body velocities");
+    expect(physics.free_body(box) == nle::ErrorCode::Ok,
+           "2D physics frees a body");
+    expect(physics.free_body(box) == nle::ErrorCode::NotFound,
+           "2D physics rejects stale body identifiers");
+    expect(physics.get_body_count() == 2,
+           "2D physics updates body count after removal");
 }
 
 void test_input_server() {
@@ -1477,6 +1536,7 @@ void test_memory() {
 } // namespace
 
 int main() {
+    test_physics_server_2d();
     test_input_server();
     test_input_map();
     test_render_graph();
