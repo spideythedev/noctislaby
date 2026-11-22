@@ -3,6 +3,7 @@ add_library(nle_core STATIC
     logging/logger.cpp
     object/object.cpp
     object/object_db.cpp
+    string/string_name.cpp
 )
 
 target_include_directories(nle_core
