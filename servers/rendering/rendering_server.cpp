@@ -40,7 +40,7 @@ bool RenderingServer::is_initialized() const noexcept {
     return device_ != nullptr && device_->is_initialized();
 }
 
-RenderingDeviceInfo RenderingServer::get_device_info() const noexcept {
+RenderingDeviceInfo RenderingServer::get_device_info() const {
     std::lock_guard lock(mutex_);
     return device_ == nullptr ? RenderingDeviceInfo{} : device_->get_device_info();
 }
