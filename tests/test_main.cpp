@@ -1,4 +1,7 @@
 #include "error/error.h"
+#include "object/object.h"
+#include "object/object_db.h"
+#include "object/ref_counted.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -13,9 +16,22 @@ void expect(const bool condition, const std::string_view message) {
     }
 }
 
-} // namespace
+class TestObject final : public nle::Object {};
 
-int main() {
+class TestResource final : public nle::RefCounted {
+public:
+    explicit TestResource(int* destruction_count)
+        : destruction_count_(destruction_count) {}
+
+    ~TestResource() override {
+        ++(*destruction_count_);
+    }
+
+private:
+    int* destruction_count_;
+};
+
+void test_error_codes() {
     using nle::ErrorCode;
 
     expect(nle::error_code_name(ErrorCode::Ok) == "Ok", "Ok error code name");
@@ -23,6 +39,50 @@ int main() {
            "InvalidParameter error code name");
     expect(nle::error_code_name(ErrorCode::PlatformError) == "PlatformError",
            "PlatformError error code name");
+}
+
+void test_object_registry() {
+    auto* object = new TestObject();
+    const nle::ObjectID id = object->get_instance_id();
+
+    expect(id.is_valid(), "object receives a valid identifier");
+    expect(nle::ObjectDB::get_instance(id) == object, "object is registered");
+
+    delete object;
+
+    expect(nle::ObjectDB::get_instance(id) == nullptr, "destroyed object is unregistered");
+}
+
+void test_reference_counting() {
+    int destruction_count = 0;
+    nle::ObjectID id;
+
+    {
+        nle::Ref<TestResource> resource = nle::make_ref<TestResource>(&destruction_count);
+        id = resource->get_instance_id();
+
+        expect(resource->get_reference_count() == 1, "new Ref owns one reference");
+
+        {
+            nle::Ref<TestResource> copy = resource;
+            expect(resource->get_reference_count() == 2, "copy increments reference count");
+            expect(copy.get() == resource.get(), "copied Ref points to same object");
+        }
+
+        expect(resource->get_reference_count() == 1, "destroyed copy releases its reference");
+        expect(destruction_count == 0, "resource remains alive while referenced");
+    }
+
+    expect(destruction_count == 1, "last reference destroys resource");
+    expect(!nle::ObjectDB::instance_exists(id), "released resource leaves object registry");
+}
+
+} // namespace
+
+int main() {
+    test_error_codes();
+    test_object_registry();
+    test_reference_counting();
 
     std::cout << "All NoctisLaby core tests passed.\n";
     return EXIT_SUCCESS;
