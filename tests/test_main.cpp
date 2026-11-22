@@ -109,9 +109,9 @@ void test_vectors() {
            "Vector2 scalar cross product");
 
     const nle::Vector2 normalized = horizontal.normalized();
-    expect(std::abs(normalized.x - nle::real_t{0.6}) < nle::real_t{0.0001},
+    expect(std::abs(normalized.x - nle::real_t{0.6F}) < nle::real_t{0.0001F},
            "Vector2 normalized x");
-    expect(std::abs(normalized.y - nle::real_t{0.8}) < nle::real_t{0.0001},
+    expect(std::abs(normalized.y - nle::real_t{0.8F}) < nle::real_t{0.0001},
            "Vector2 normalized y");
 
     const nle::Vector3 right{1, 0, 0};
