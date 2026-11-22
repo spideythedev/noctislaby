@@ -11,6 +11,13 @@ const char* Node3D::get_class_name() const noexcept {
     return "Node3D";
 }
 
+Transform3D Node3D::get_global_transform() const noexcept {
+    const auto* parent_3d = dynamic_cast<const Node3D*>(get_parent());
+    return parent_3d == nullptr
+        ? transform_
+        : parent_3d->get_global_transform() * transform_;
+}
+
 const Transform3D& Node3D::get_transform() const noexcept {
     return transform_;
 }
