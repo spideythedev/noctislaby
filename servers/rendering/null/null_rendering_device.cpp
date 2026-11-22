@@ -20,7 +20,7 @@ void NullRenderingDevice::shutdown() noexcept {
     std::lock_guard lock(mutex_);
     slots_.clear();
     free_slots_.clear();
-    buffer_count_ = 0;
+    buffer_count_ = 0;\n    texture_slots_.clear();\n    free_texture_slots_.clear();\n    texture_count_ = 0;
     initialized_ = false;
 }
 

@@ -466,6 +466,49 @@ void test_rendering_device() {
     expect(device.read_buffer(reused, 0, contents) == nle::ErrorCode::InvalidState,
            "shutdown device rejects resource access");
 
+    const std::array<std::byte, 4> texture_initial{
+        std::byte{10}, std::byte{20}, std::byte{30}, std::byte{40}
+    };
+    const nle::TextureDescription texture_description{
+        2,
+        1,
+        nle::TextureFormat::RGBA8Unorm,
+        nle::TextureUsage::Sampled | nle::TextureUsage::TransferDestination,
+        texture_initial
+    };
+    nle::RID texture;
+    expect(device.create_texture(texture_description, texture) == nle::ErrorCode::Ok,
+           "null device creates a texture");
+    expect(device.get_texture_count() == 1, "null device tracks allocated textures");
+
+    std::array<std::byte, 8> texture_contents{};
+    expect(device.read_texture(texture, 0, texture_contents) == nle::ErrorCode::Ok,
+           "null device reads texture bytes");
+    expect(std::equal(texture_initial.begin(), texture_initial.end(), texture_contents.begin()),
+           "texture creation copies initial data");
+    expect(texture_contents[4] == std::byte{0},
+           "texture allocation zero-fills unspecified bytes");
+
+    const std::array<std::byte, 2> texture_update{std::byte{90}, std::byte{80}};
+    expect(device.update_texture(texture, 6, texture_update) == nle::ErrorCode::Ok,
+           "null device updates texture byte range");
+    expect(device.read_texture(texture, 6, std::span<std::byte>(texture_contents).subspan(6, 2)) ==
+           nle::ErrorCode::Ok && texture_contents[6] == std::byte{90} &&
+           texture_contents[7] == std::byte{80},
+           "texture updates are visible to readback");
+    expect(device.update_texture(texture, 7, texture_update) ==
+           nle::ErrorCode::InvalidParameter,
+           "texture update rejects out-of-range writes");
+    nle::RID invalid_texture;
+    expect(device.create_texture({0, 1, nle::TextureFormat::RGBA8Unorm, {}, {}},
+                                 invalid_texture) == nle::ErrorCode::InvalidParameter,
+           "null device rejects zero-width textures");
+    expect(device.free_texture(texture) == nle::ErrorCode::Ok,
+           "null device frees textures");
+    expect(device.free_texture(texture) == nle::ErrorCode::NotFound,
+           "null device rejects stale texture identifiers");
+    expect(device.get_texture_count() == 0, "freeing texture updates resource count");
+
     nle::RenderingServer server;
     expect(server.create_buffer(description, reused) == nle::ErrorCode::InvalidState,
            "rendering server rejects operations before initialization");
@@ -480,6 +523,12 @@ void test_rendering_device() {
            "rendering server rejects a second backend");
     expect(server.create_buffer(description, reused) == nle::ErrorCode::Ok,
            "rendering server forwards buffer creation");
+    nle::RID server_texture;
+    expect(server.create_texture(texture_description, server_texture) == nle::ErrorCode::Ok,
+           "rendering server forwards texture creation");
+    expect(server.free_texture(server_texture) == nle::ErrorCode::Ok,
+           "rendering server forwards texture release");
+
     expect(server.free_buffer(reused) == nle::ErrorCode::Ok,
            "rendering server forwards buffer release");
     server.shutdown();
