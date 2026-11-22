@@ -201,7 +201,7 @@ void test_resource_loader() {
     nle::ErrorCode error = nle::ErrorCode::Failed;
     nle::Ref<nle::Resource> first = loader.load("res://materials/test.NLERES", &error);
 
-    expect(first != nullptr, "resource loader dispatches by extension");
+    expect(first.get() != nullptr, "resource loader dispatches by extension");
     expect(error == nle::ErrorCode::Ok, "resource load reports success");
     expect(first->get_path() == "res://materials/test.NLERES",
            "resource loader assigns source path");
