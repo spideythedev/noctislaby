@@ -3,6 +3,7 @@
 #include "io/resource.h"
 #include "io/resource_cache.h"
 #include "io/resource_loader.h"
+#include "io/resource_saver.h"
 #include "object/class_db.h"
 #include "math/aabb.h"
 #include "math/basis.h"
@@ -53,6 +54,29 @@ public:
 };
 
 class TestTexture final : public nle::Resource {};
+
+class TestFormatSaver final : public nle::ResourceFormatSaver {
+public:
+    [[nodiscard]] std::vector<std::string> get_recognized_extensions() const override {
+        return {"nleres"};
+    }
+
+    [[nodiscard]] nle::ErrorCode save(
+        const std::string_view path,
+        const nle::Ref<nle::Resource>& resource
+    ) override {
+        if (!resource) {
+            return nle::ErrorCode::InvalidParameter;
+        }
+
+        ++save_count;
+        saved_path = std::string(path);
+        return nle::ErrorCode::Ok;
+    }
+
+    int save_count = 0;
+    std::string saved_path;
+};
 
 class TestFormatLoader final : public nle::ResourceFormatLoader {
 public:
@@ -189,6 +213,24 @@ void test_file_access() {
     }
 
     std::filesystem::remove(path, filesystem_error);
+}
+
+void test_resource_saver() {
+    nle::ResourceSaver saver;
+    auto format_saver = std::make_shared<TestFormatSaver>();
+    nle::Ref<nle::Resource> resource = nle::make_ref<nle::Resource>();
+
+    expect(saver.add_format_saver(format_saver), "resource format saver registers");
+    expect(!saver.add_format_saver(format_saver), "duplicate format saver is rejected");
+    expect(saver.save("res://materials/test.NLERES", resource) == nle::ErrorCode::Ok,
+           "resource saver dispatches by extension");
+    expect(format_saver->save_count == 1, "format saver receives resource");
+    expect(format_saver->saved_path == "res://materials/test.NLERES",
+           "format saver receives destination path");
+    expect(saver.save("res://materials/test.unknown", resource) == nle::ErrorCode::NotFound,
+           "unsupported save extension fails");
+    expect(saver.save("res://materials/test.nleres", {}) ==
+           nle::ErrorCode::InvalidParameter, "null resource cannot be saved");
 }
 
 void test_resource_loader() {
@@ -548,6 +590,7 @@ int main() {
     test_object_registry();
     test_reference_counting();
     test_file_access();
+    test_resource_saver();
     test_resource_loader();
     test_resources();
     test_signals();
