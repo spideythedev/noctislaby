@@ -35,7 +35,7 @@ NLE follows capability-based releases. A version is published only when its acce
 
 ## 1.7.0-stable — expanded production engine
 
-- [ ] Physics 2D and 3D with selectable backends.
+- [x] Initial 2D static/dynamic AABB solver with gravity and collision response.\n- [ ] Production 2D physics with spatial broadphase, shapes, joints and continuous collision detection.\n- [ ] 3D physics with selectable production backends.
 - [ ] Audio mixer, buses, effects, streaming and platform drivers.
 - [ ] Input and display servers with platform implementations.
 - [ ] Animation, navigation, networking and text systems.
