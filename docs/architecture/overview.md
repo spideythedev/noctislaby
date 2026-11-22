@@ -23,8 +23,8 @@ The current foundation provides:
 - CMake-based C17/C++20 configuration and generated engine version metadata.
 - Core memory allocation, object identity, object registry, reference counting, runtime class factories and signals.
 - String interning, a tagged Variant and foundational 2D/3D math types.
-- Binary file access, resource metadata, resource caching and pluggable format loader/saver dispatch.
-- Node ownership, scene-tree lifecycle, frame/physics callbacks and hierarchical spatial transforms.
+- Binary file access, resource metadata, a versioned persistent UID registry, resource caching and pluggable format loader/saver dispatch.
+- Node ownership, scene-tree lifecycle, a fixed-timestep main loop with bounded catch-up, frame/physics callbacks and hierarchical spatial transforms.
 - A rendering server, generation-checked resource IDs, null buffer backend and dependency-aware render graph.
 - A versioned C ABI metadata library and cross-platform build/test workflow.
 

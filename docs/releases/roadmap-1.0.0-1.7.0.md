@@ -10,12 +10,12 @@ NLE follows capability-based releases. A version is published only when its acce
 - [ ] Stable object ownership, weak references and lifetime-safe object access.
 - [ ] Reflection metadata for methods, properties, signals and enums.
 - [ ] Expanded Variant and conversion/operator coverage.
-- [ ] Resource UID registry, canonical paths and versioned serialization.
+- [x] Persistent versioned resource UID registry with integrity checks.\n- [ ] Canonical resource paths, project-wide UID remapping and versioned resource serialization.
 - [ ] Async resource loading, dependency tracking and cache policies.
 - [ ] Project configuration and a reproducible project format.
 
 ### Scene and runtime
-- [ ] MainLoop with fixed physics timestep and frame scheduler.
+- [x] Fixed-timestep MainLoop with bounded catch-up, frame clamping and time scaling.\n- [ ] Platform event loop, high-resolution clock and frame pacing.
 - [ ] Deferred deletion, process priorities, pause and input dispatch.
 - [ ] Scene/resource serialization and packed scene instantiation.
 - [ ] Tested 2D and 3D scene lifecycle and transform behavior.

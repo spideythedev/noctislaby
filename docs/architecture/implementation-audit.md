@@ -26,7 +26,7 @@ The README's directory map is aspirational in several places: editor, drivers, p
 5. Render graph topological ordering scanned every pass repeatedly. A min-priority ready queue now preserves stable order while reducing scheduling work to O((V + E) log V), excluding dependency construction.
 6. Regression tests cover deterministic signal order and invalid render-graph access declarations.
 
-## Remaining correctness and design risks
+## Additional systems implemented after the initial audit\n\n- ResourceUIDRegistry provides bidirectional UID/path lookup and a versioned binary database with checksum validation, bounded input, deterministic output and transactional load semantics.\n- MainLoop provides a fixed physics timestep, bounded catch-up, frame-delta clamping, time scaling and interpolation alpha reporting.\n- The latest six-platform CI matrix passed after these changes: Ubuntu, Windows and macOS in Debug and Release.\n\n## Remaining correctness and design risks
 
 ### Object lifetime and threading
 - ObjectDB lookup returns a raw pointer after releasing its registry mutex. This is an identity lookup, not a lifetime-pinning handle; cross-thread destruction/use requires a stronger ownership or access protocol.
@@ -35,14 +35,14 @@ The README's directory map is aspirational in several places: editor, drivers, p
 - Runtime class enumeration currently uses an unordered registry and should be made deterministic before it becomes a public reflection contract.
 
 ### Resource pipeline
-- Resource UIDs are value types only; there is no UID database, path remapping or persistent UID index.
+- Resource UIDs now have a persistent registry, but path remapping, project-wide canonicalization, import remapping and resource dependency indexing are not implemented.
 - Resource loader/saver dispatch is extension-based and plugin-oriented, but no built-in serialized scene/resource format exists.
 - There is no dependency graph, import database, asynchronous loading, cancellation, load progress or cache policy matrix.
 - Cache keys are exact path strings; canonicalization and alias handling remain unspecified.
 
 ### Scene runtime
 - Node ownership and basic lifecycle callbacks exist, but there is no deferred deletion queue, process priority, groups, input propagation, notifications, pause tree, viewport/canvas, scene serialization or packed-scene instantiation.
-- SceneTree currently exposes manual frame and physics dispatch. There is no main-loop scheduler, fixed-step accumulator, time scaling or platform event loop.
+- MainLoop now provides fixed-step scheduling, bounded catch-up and time scaling. It is not yet connected to a platform event loop, display/input pump or wall-clock timer.
 - Scene mutation and object lifetime are not designed for arbitrary concurrent mutation.
 
 ### Rendering
