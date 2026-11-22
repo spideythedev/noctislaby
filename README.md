@@ -6,20 +6,20 @@ The project is being developed toward broad feature parity with mature open-sour
 
 ## Technology
 
-- **C++** — engine runtime and native systems.
-- **C** — stable low-level interfaces and platform integration where appropriate.
-- **C#** — managed gameplay scripting through a native interop boundary.
+- **C++20** — native engine runtime and core systems.
+- **C17** — stable low-level interfaces and platform integration.
+- **C#** — planned first-class managed gameplay scripting through a versioned native interop boundary.
 - **CMake** — cross-platform build configuration.
 
 ## Repository map
 
 | Directory | Responsibility |
 | --- | --- |
-| `core/` | Fundamental types, memory, objects, logging and utilities |
+| `core/` | Fundamental types, memory, objects, math, resources and utilities |
 | `main/` | Engine startup, lifecycle and runtime orchestration |
 | `servers/` | Rendering, physics, audio, input and other engine services |
-| `scene/` | Scene tree, nodes, resources and gameplay-facing systems |
-| `scripting/` | Script abstraction, C API and C# integration |
+| `scene/` | Node hierarchy, scene tree, 2D/3D nodes and gameplay-facing systems |
+| `scripting/` | Script abstraction, C API and future managed runtime integration |
 | `editor/` | Editor application and development tools |
 | `drivers/` | Concrete hardware and library backends |
 | `platform/` | Operating-system-specific implementations |
@@ -40,6 +40,7 @@ Requirements:
 ```sh
 cmake -S . -B build
 cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 ```
 
 Run the runtime:
@@ -50,15 +51,32 @@ Run the runtime:
 
 On multi-configuration generators, the executable may be under `build/bin/Release`.
 
-## Development status
+## Implemented foundation
 
-The project is in its foundation phase. The initial target is a clean, reproducible native build and a tested core. Rendering, physics, scene management, scripting, editor tooling and platform export will be implemented incrementally.
+The current native foundation includes:
 
-Feature parity is measured by implemented behavior, integration and tests—not by directory names.
+- CMake build configuration, generated version metadata and compiler warning policies.
+- A shared core library and a C-compatible, versioned engine metadata API.
+- Typed error codes, thread-safe logging and aligned allocation with live memory statistics.
+- Object identity, object registry, intrusive reference counting, typed references and runtime class registration.
+- Thread-safe signals and interned string identifiers.
+- A tagged Variant value type.
+- 2D/3D vectors, rectangles, AABBs, planes, colors, quaternions, bases and affine transforms.
+- Binary file access, resource metadata, resource IDs, resource caching, and pluggable format loader/saver dispatch.
+- Node ownership, scene-tree lifecycle, frame/physics callbacks, and transformable Node2D/Node3D types.
+- Automated core, resource, scene and C-ABI tests.
+
+The foundation is intentionally not presented as full engine parity.
+
+## Current gaps
+
+Rendering backends, physics simulation, audio drivers, animation systems, navigation, networking, the full C# host/bindings, editor tooling, asset import pipelines and platform export systems remain to be implemented.
+
+Feature parity is measured by working behavior, integration and tests—not by directory names.
 
 ## Licensing and upstream code
 
-Code reused from other projects must retain its applicable copyright and license notices. Third-party components may have licenses different from the engine's own license; each dependency must be reviewed and recorded before inclusion.
+Code reused from other projects must retain its applicable copyright and license notices. Third-party components may have licenses different from the engine's own license; each dependency must be reviewed and recorded before inclusion. The current foundation code is independently authored; Godot source is being studied as an architectural and implementation reference.
 
 ## Commit conventions
 
