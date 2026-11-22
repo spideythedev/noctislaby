@@ -1,5 +1,6 @@
 add_library(nle_core STATIC
     error/error.cpp
+    io/file_access.cpp
     io/resource.cpp
     io/resource_cache.cpp
     logging/logger.cpp
