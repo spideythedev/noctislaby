@@ -15,7 +15,7 @@ struct ResourceUID final {
         return is_valid();
     }
 
-    friend constexpr bool operator==(ResourceUID, ResourceUID) noexcept = default;
+    friend constexpr bool operator==(const ResourceUID&, const ResourceUID&) noexcept = default;
 };
 
 } // namespace nle
