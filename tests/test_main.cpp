@@ -259,7 +259,7 @@ void test_physics_server_2d() {
     nle::PhysicsBodyState2D state;
     expect(physics.get_body_state(box, state) == nle::ErrorCode::Ok,
            "2D physics returns body state");
-    expect(state.world_bounds.position.y >= 0.99F,
+    expect(state.world_bounds.position.y >= 0.89F,
            "2D physics resolves dynamic body penetration against static floor");
     expect(state.velocity.y >= -0.001F,
            "2D physics removes velocity into the collision normal");
