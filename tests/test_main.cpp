@@ -21,6 +21,8 @@
 #include "object/object_db.h"
 #include "object/ref_counted.h"
 #include "object/signal.h"
+#include "servers/rendering/null/null_rendering_device.h"
+#include "servers/rendering/rendering_server.h"
 #include "scene/2d/node_2d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
@@ -28,6 +30,7 @@
 #include "string/string_name.h"
 #include "variant/variant.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <filesystem>
@@ -143,6 +146,97 @@ public:
 private:
     int* destruction_count_;
 };
+
+void test_rendering_device() {
+    nle::NullRenderingDevice device;
+    nle::RID uninitialized_buffer;
+    expect(device.create_buffer({}, uninitialized_buffer) == nle::ErrorCode::InvalidParameter,
+           "null device validates buffer descriptions before initialization");
+    expect(device.create_buffer({4, nle::BufferUsage::Vertex, {}}, uninitialized_buffer) ==
+           nle::ErrorCode::InvalidState,
+           "uninitialized rendering device rejects buffer creation");
+    expect(device.initialize() == nle::ErrorCode::Ok,
+           "null rendering device initializes");
+    expect(device.initialize() == nle::ErrorCode::AlreadyExists,
+           "null rendering device rejects duplicate initialization");
+
+    const std::array<std::byte, 4> initial{
+        std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}
+    };
+    const nle::BufferDescription description{
+        8,
+        nle::BufferUsage::Vertex | nle::BufferUsage::Readback,
+        initial
+    };
+
+    nle::RID first;
+    expect(device.create_buffer(description, first) == nle::ErrorCode::Ok,
+           "null device creates a buffer");
+    expect(first.is_valid(), "created buffer receives a valid RID");
+    expect(device.get_buffer_count() == 1, "null device tracks allocated buffers");
+
+    std::array<std::byte, 8> contents{};
+    expect(device.read_buffer(first, 0, contents) == nle::ErrorCode::Ok,
+           "null device reads buffer contents");
+    expect(std::equal(initial.begin(), initial.end(), contents.begin()),
+           "buffer creation copies initial data");
+    expect(contents[4] == std::byte{0} && contents[7] == std::byte{0},
+           "uninitialized buffer bytes are zero-filled");
+
+    const std::array<std::byte, 2> update{std::byte{9}, std::byte{8}};
+    expect(device.update_buffer(first, 2, update) == nle::ErrorCode::Ok,
+           "null device updates buffer range");
+    expect(device.read_buffer(first, 2, std::span<std::byte>(contents).subspan(2, 2)) ==
+           nle::ErrorCode::Ok, "null device reads updated range");
+    expect(contents[2] == std::byte{9} && contents[3] == std::byte{8},
+           "buffer update changes only requested bytes");
+
+    expect(device.update_buffer(first, 7, update) == nle::ErrorCode::InvalidParameter,
+           "buffer update rejects out-of-range writes");
+    expect(device.create_buffer({0, nle::BufferUsage::Vertex, {}}, first) ==
+           nle::ErrorCode::InvalidParameter,
+           "null device rejects zero-sized buffers");
+
+    const nle::RID stale = first;
+    expect(device.free_buffer(first) == nle::ErrorCode::Ok,
+           "null device frees buffer");
+    expect(device.free_buffer(first) == nle::ErrorCode::NotFound,
+           "null device rejects stale resource identifiers");
+    expect(device.get_buffer_count() == 0, "freeing buffer updates resource count");
+
+    nle::RID reused;
+    expect(device.create_buffer(description, reused) == nle::ErrorCode::Ok,
+           "null device reuses released buffer slot");
+    expect(reused.get_index() == stale.get_index(),
+           "resource allocator reuses released slot");
+    expect(reused.get_generation() != stale.get_generation(),
+           "resource allocator increments slot generation");
+    expect(device.read_buffer(stale, 0, contents) == nle::ErrorCode::NotFound,
+           "stale RID cannot access a reused resource");
+
+    device.shutdown();
+    expect(!device.is_initialized(), "null rendering device shuts down");
+    expect(device.read_buffer(reused, 0, contents) == nle::ErrorCode::InvalidState,
+           "shutdown device rejects resource access");
+
+    nle::RenderingServer server;
+    expect(server.create_buffer(description, reused) == nle::ErrorCode::InvalidState,
+           "rendering server rejects operations before initialization");
+    expect(server.initialize(std::make_unique<nle::NullRenderingDevice>()) ==
+           nle::ErrorCode::Ok, "rendering server initializes selected backend");
+    expect(server.is_initialized(), "rendering server reports initialized");
+    expect(server.get_device_info().name == "NoctisLaby Null Device",
+           "rendering server exposes backend information");
+    expect(server.initialize(std::make_unique<nle::NullRenderingDevice>()) ==
+           nle::ErrorCode::AlreadyExists,
+           "rendering server rejects a second backend");
+    expect(server.create_buffer(description, reused) == nle::ErrorCode::Ok,
+           "rendering server forwards buffer creation");
+    expect(server.free_buffer(reused) == nle::ErrorCode::Ok,
+           "rendering server forwards buffer release");
+    server.shutdown();
+    expect(!server.is_initialized(), "rendering server shuts down backend");
+}
 
 void test_spatial_nodes() {
     nle::Node2D node_2d;
@@ -712,6 +806,7 @@ void test_memory() {
 } // namespace
 
 int main() {
+    test_rendering_device();
     test_spatial_nodes();
     test_scene_tree();
     test_error_codes();
