@@ -216,6 +216,18 @@ void test_render_graph() {
     expect(cyclic.compile(order) == nle::ErrorCode::InvalidState && order.empty(),
            "render graph detects dependency cycles");
 
+    nle::RenderGraph invalid_declaration;
+    nle::RenderGraphResourceId imported = 0;
+    expect(invalid_declaration.create_resource("imported", true, imported) ==
+           nle::ErrorCode::Ok, "render graph creates resource for access validation");
+    const std::array<nle::RenderGraphResourceUse, 1> invalid_access{{
+        {imported, static_cast<nle::RenderGraphAccess>(255)}
+    }};
+    nle::RenderGraphPassId invalid_pass = 0;
+    expect(invalid_declaration.add_pass("invalid-access", invalid_access, invalid_pass) ==
+           nle::ErrorCode::InvalidParameter,
+           "render graph rejects unknown resource access values");
+
     expect(cyclic.add_dependency(first, first) == nle::ErrorCode::InvalidParameter,
            "render graph rejects self dependency");
     expect(graph.get_resource_count() == 3 && graph.get_pass_count() == 3,

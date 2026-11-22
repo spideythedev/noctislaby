@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <cstddef>
 #include <limits>
+#include <functional>
+#include <new>
+#include <queue>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -45,7 +49,14 @@ ErrorCode RenderGraph::create_resource(
         return ErrorCode::OutOfMemory;
     }
 
-    resources_.push_back(Resource{std::string(name), imported});
+    try {
+        resources_.push_back(Resource{std::string(name), imported});
+    } catch (const std::bad_alloc&) {
+        return ErrorCode::OutOfMemory;
+    } catch (const std::length_error&) {
+        return ErrorCode::OutOfMemory;
+    }
+
     result = static_cast<RenderGraphResourceId>(resources_.size());
     return ErrorCode::Ok;
 }
@@ -69,6 +80,15 @@ ErrorCode RenderGraph::add_pass(
             return ErrorCode::InvalidParameter;
         }
 
+        switch (use.access) {
+            case RenderGraphAccess::Read:
+            case RenderGraphAccess::Write:
+            case RenderGraphAccess::ReadWrite:
+                break;
+            default:
+                return ErrorCode::InvalidParameter;
+        }
+
         if (std::find_if(
                 resources.begin(),
                 resources.begin() + static_cast<std::ptrdiff_t>(index),
@@ -79,11 +99,18 @@ ErrorCode RenderGraph::add_pass(
         }
     }
 
-    passes_.push_back(Pass{
-        std::string(name),
-        std::vector<RenderGraphResourceUse>(resources.begin(), resources.end()),
-        {}
-    });
+    try {
+        passes_.push_back(Pass{
+            std::string(name),
+            std::vector<RenderGraphResourceUse>(resources.begin(), resources.end()),
+            {}
+        });
+    } catch (const std::bad_alloc&) {
+        return ErrorCode::OutOfMemory;
+    } catch (const std::length_error&) {
+        return ErrorCode::OutOfMemory;
+    }
+
     result = static_cast<RenderGraphPassId>(passes_.size());
     return ErrorCode::Ok;
 }
@@ -101,7 +128,13 @@ ErrorCode RenderGraph::add_dependency(
     Pass& pass = passes_[dependent - 1];
     if (std::find(pass.dependencies.begin(), pass.dependencies.end(), prerequisite) ==
         pass.dependencies.end()) {
-        pass.dependencies.push_back(prerequisite);
+        try {
+            pass.dependencies.push_back(prerequisite);
+        } catch (const std::bad_alloc&) {
+            return ErrorCode::OutOfMemory;
+        } catch (const std::length_error&) {
+            return ErrorCode::OutOfMemory;
+        }
     }
     return ErrorCode::Ok;
 }
@@ -109,6 +142,7 @@ ErrorCode RenderGraph::add_dependency(
 ErrorCode RenderGraph::compile(std::vector<RenderGraphPassId>& order) const {
     order.clear();
 
+    try {
     const std::size_t pass_count = passes_.size();
     std::vector<std::vector<std::size_t>> edges(pass_count);
     std::vector<std::size_t> indegree(pass_count, 0);
@@ -154,32 +188,46 @@ ErrorCode RenderGraph::compile(std::vector<RenderGraphPassId>& order) const {
         }
     }
 
-    std::vector<bool> emitted(pass_count, false);
+    std::priority_queue<
+        std::size_t,
+        std::vector<std::size_t>,
+        std::greater<>
+    > ready;
+    for (std::size_t index = 0; index < pass_count; ++index) {
+        if (indegree[index] == 0) {
+            ready.push(index);
+        }
+    }
+
     std::vector<RenderGraphPassId> compiled;
     compiled.reserve(pass_count);
 
-    while (compiled.size() < pass_count) {
-        std::size_t next = pass_count;
-        for (std::size_t index = 0; index < pass_count; ++index) {
-            if (!emitted[index] && indegree[index] == 0) {
-                next = index;
-                break;
-            }
-        }
-
-        if (next == pass_count) {
-            return ErrorCode::InvalidState;
-        }
-
-        emitted[next] = true;
+    while (!ready.empty()) {
+        const std::size_t next = ready.top();
+        ready.pop();
         compiled.push_back(static_cast<RenderGraphPassId>(next + 1));
+
         for (const std::size_t dependent : edges[next]) {
             --indegree[dependent];
+            if (indegree[dependent] == 0) {
+                ready.push(dependent);
+            }
         }
+    }
+
+    if (compiled.size() != pass_count) {
+        return ErrorCode::InvalidState;
     }
 
     order = std::move(compiled);
     return ErrorCode::Ok;
+    } catch (const std::bad_alloc&) {
+        order.clear();
+        return ErrorCode::OutOfMemory;
+    } catch (const std::length_error&) {
+        order.clear();
+        return ErrorCode::OutOfMemory;
+    }
 }
 
 std::size_t RenderGraph::get_resource_count() const noexcept {
