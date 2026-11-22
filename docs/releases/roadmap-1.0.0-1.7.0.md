@@ -22,7 +22,7 @@ NLE follows capability-based releases. A version is published only when its acce
 
 ### Rendering
 - [ ] Hardware backend with tested 2D and 3D rendering.
-- [ ] Textures, samplers, shaders, pipelines, render targets and swapchain.
+- [x] Texture resource descriptions, formats, usage flags and null-backend storage/readback.\n- [ ] Hardware textures, samplers, shaders, pipelines, render targets and swapchain.
 - [ ] Command buffers, submission, fences and resource lifetime rules.
 - [ ] Render graph integration with backend resource transitions.
 
