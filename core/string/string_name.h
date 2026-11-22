@@ -2,6 +2,7 @@
 
 #include <compare>
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -30,9 +31,13 @@ private:
 
 } // namespace nle
 
+namespace std {
+
 template <>
-struct std::hash<nle::StringName> {
+struct hash<nle::StringName> {
     [[nodiscard]] std::size_t operator()(const nle::StringName& value) const noexcept {
         return value.hash();
     }
 };
+
+} // namespace std
