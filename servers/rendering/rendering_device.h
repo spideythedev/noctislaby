@@ -129,7 +129,23 @@ public:
         std::size_t offset,
         std::span<std::byte> destination
     ) const = 0;
-    [[nodiscard]] virtual ErrorCode free_buffer(RID buffer) = 0;\n\n    [[nodiscard]] virtual ErrorCode create_texture(\n        const TextureDescription& description,\n        RID& result\n    ) = 0;\n    [[nodiscard]] virtual ErrorCode update_texture(\n        RID texture,\n        std::size_t offset,\n        std::span<const std::byte> data\n    ) = 0;\n    [[nodiscard]] virtual ErrorCode read_texture(\n        RID texture,\n        std::size_t offset,\n        std::span<std::byte> destination\n    ) const = 0;\n    [[nodiscard]] virtual ErrorCode free_texture(RID texture) = 0;
+    [[nodiscard]] virtual ErrorCode free_buffer(RID buffer) = 0;
+
+    [[nodiscard]] virtual ErrorCode create_texture(
+        const TextureDescription& description,
+        RID& result
+    ) = 0;
+    [[nodiscard]] virtual ErrorCode update_texture(
+        RID texture,
+        std::size_t offset,
+        std::span<const std::byte> data
+    ) = 0;
+    [[nodiscard]] virtual ErrorCode read_texture(
+        RID texture,
+        std::size_t offset,
+        std::span<std::byte> destination
+    ) const = 0;
+    [[nodiscard]] virtual ErrorCode free_texture(RID texture) = 0;
 };
 
 } // namespace nle

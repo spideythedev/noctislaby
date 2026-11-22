@@ -84,4 +84,44 @@ ErrorCode RenderingServer::free_buffer(const RID buffer) {
         : device_->free_buffer(buffer);
 }
 
+
+ErrorCode RenderingServer::create_texture(
+    const TextureDescription& description,
+    RID& result
+) {
+    std::lock_guard lock(mutex_);
+    return device_ == nullptr
+        ? ErrorCode::InvalidState
+        : device_->create_texture(description, result);
+}
+
+ErrorCode RenderingServer::update_texture(
+    const RID texture,
+    const std::size_t offset,
+    const std::span<const std::byte> data
+) {
+    std::lock_guard lock(mutex_);
+    return device_ == nullptr
+        ? ErrorCode::InvalidState
+        : device_->update_texture(texture, offset, data);
+}
+
+ErrorCode RenderingServer::read_texture(
+    const RID texture,
+    const std::size_t offset,
+    const std::span<std::byte> destination
+) const {
+    std::lock_guard lock(mutex_);
+    return device_ == nullptr
+        ? ErrorCode::InvalidState
+        : device_->read_texture(texture, offset, destination);
+}
+
+ErrorCode RenderingServer::free_texture(const RID texture) {
+    std::lock_guard lock(mutex_);
+    return device_ == nullptr
+        ? ErrorCode::InvalidState
+        : device_->free_texture(texture);
+}
+
 } // namespace nle

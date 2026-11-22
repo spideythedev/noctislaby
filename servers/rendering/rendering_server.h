@@ -36,7 +36,23 @@ public:
         std::size_t offset,
         std::span<std::byte> destination
     ) const;
-    [[nodiscard]] ErrorCode free_buffer(RID buffer);\n\n    [[nodiscard]] ErrorCode create_texture(\n        const TextureDescription& description,\n        RID& result\n    );\n    [[nodiscard]] ErrorCode update_texture(\n        RID texture,\n        std::size_t offset,\n        std::span<const std::byte> data\n    );\n    [[nodiscard]] ErrorCode read_texture(\n        RID texture,\n        std::size_t offset,\n        std::span<std::byte> destination\n    ) const;\n    [[nodiscard]] ErrorCode free_texture(RID texture);
+    [[nodiscard]] ErrorCode free_buffer(RID buffer);
+
+    [[nodiscard]] ErrorCode create_texture(
+        const TextureDescription& description,
+        RID& result
+    );
+    [[nodiscard]] ErrorCode update_texture(
+        RID texture,
+        std::size_t offset,
+        std::span<const std::byte> data
+    );
+    [[nodiscard]] ErrorCode read_texture(
+        RID texture,
+        std::size_t offset,
+        std::span<std::byte> destination
+    ) const;
+    [[nodiscard]] ErrorCode free_texture(RID texture);
 
 private:
     mutable std::mutex mutex_;

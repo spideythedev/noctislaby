@@ -30,7 +30,24 @@ public:
     ) const override;
     [[nodiscard]] ErrorCode free_buffer(RID buffer) override;
 
-    [[nodiscard]] std::size_t get_buffer_count() const noexcept;\n    [[nodiscard]] std::size_t get_texture_count() const noexcept;\n\n    [[nodiscard]] ErrorCode create_texture(\n        const TextureDescription& description,\n        RID& result\n    ) override;\n    [[nodiscard]] ErrorCode update_texture(\n        RID texture,\n        std::size_t offset,\n        std::span<const std::byte> data\n    ) override;\n    [[nodiscard]] ErrorCode read_texture(\n        RID texture,\n        std::size_t offset,\n        std::span<std::byte> destination\n    ) const override;\n    [[nodiscard]] ErrorCode free_texture(RID texture) override;
+    [[nodiscard]] std::size_t get_buffer_count() const noexcept;
+    [[nodiscard]] std::size_t get_texture_count() const noexcept;
+
+    [[nodiscard]] ErrorCode create_texture(
+        const TextureDescription& description,
+        RID& result
+    ) override;
+    [[nodiscard]] ErrorCode update_texture(
+        RID texture,
+        std::size_t offset,
+        std::span<const std::byte> data
+    ) override;
+    [[nodiscard]] ErrorCode read_texture(
+        RID texture,
+        std::size_t offset,
+        std::span<std::byte> destination
+    ) const override;
+    [[nodiscard]] ErrorCode free_texture(RID texture) override;
 
 private:
     struct Buffer final {
@@ -47,10 +64,30 @@ private:
     [[nodiscard]] Slot* get_slot(RID rid) noexcept;
     [[nodiscard]] const Slot* get_slot(RID rid) const noexcept;
 
-    struct Texture final {\n        std::vector<std::byte> bytes;\n        TextureDescription description;\n    };\n\n    struct TextureSlot final {\n        Texture texture;\n        std::uint32_t generation = 1;\n        bool occupied = false;\n    };\n\n    [[nodiscard]] TextureSlot* get_texture_slot(RID rid) noexcept;\n    [[nodiscard]] const TextureSlot* get_texture_slot(RID rid) const noexcept;\n\n    mutable std::mutex mutex_;
+    struct Texture final {
+        std::vector<std::byte> bytes;
+        std::uint32_t width = 0;
+        std::uint32_t height = 0;
+        TextureFormat format = TextureFormat::RGBA8Unorm;
+        TextureUsage usage = TextureUsage::None;
+    };
+
+    struct TextureSlot final {
+        Texture texture;
+        std::uint32_t generation = 1;
+        bool occupied = false;
+    };
+
+    [[nodiscard]] TextureSlot* get_texture_slot(RID rid) noexcept;
+    [[nodiscard]] const TextureSlot* get_texture_slot(RID rid) const noexcept;
+
+    mutable std::mutex mutex_;
     std::vector<Slot> slots_;
     std::vector<std::uint32_t> free_slots_;
-    std::size_t buffer_count_ = 0;\n    std::vector<TextureSlot> texture_slots_;\n    std::vector<std::uint32_t> free_texture_slots_;\n    std::size_t texture_count_ = 0;
+    std::size_t buffer_count_ = 0;
+    std::vector<TextureSlot> texture_slots_;
+    std::vector<std::uint32_t> free_texture_slots_;
+    std::size_t texture_count_ = 0;
     bool initialized_ = false;
 };
 
