@@ -1,6 +1,6 @@
 #include "node.h"
 
-#include "core/object/object_db.h"
+#include "object/object_db.h"
 
 #include <algorithm>
 #include <utility>
