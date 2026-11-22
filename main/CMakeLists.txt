@@ -3,7 +3,7 @@ add_executable(nle_runtime
     engine_main.cpp
 )
 
-target_link_libraries(nle_runtime PRIVATE nle_core)
+target_link_libraries(nle_runtime PRIVATE nle_engine)
 
 target_include_directories(nle_runtime
     PRIVATE
