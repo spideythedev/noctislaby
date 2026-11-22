@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <new>
 #include <string>
 #include <utility>
 
@@ -92,8 +93,15 @@ Ref<Resource> ResourceLoader::load(
             return state->resource;
         }
 
-        state = std::make_shared<LoadState>();
-        in_flight_.emplace(normalized_path, state);
+        try {
+            state = std::make_shared<LoadState>();
+            in_flight_.emplace(normalized_path, state);
+        } catch (const std::bad_alloc&) {
+            if (error != nullptr) {
+                *error = ErrorCode::OutOfMemory;
+            }
+            return {};
+        }
     }
 
     Ref<Resource> resource;

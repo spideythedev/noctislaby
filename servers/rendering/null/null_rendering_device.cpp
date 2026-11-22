@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <new>
+#include <stdexcept>
 
 namespace nle {
 
@@ -61,6 +62,8 @@ ErrorCode NullRenderingDevice::create_buffer(
             slots_.emplace_back();
         } catch (const std::bad_alloc&) {
             return ErrorCode::OutOfMemory;
+        } catch (const std::length_error&) {
+            return ErrorCode::OutOfMemory;
         }
 
         index = static_cast<std::uint32_t>(slots_.size() - 1);
@@ -73,6 +76,9 @@ ErrorCode NullRenderingDevice::create_buffer(
     try {
         slot.buffer.bytes.assign(description.size, std::byte{0});
     } catch (const std::bad_alloc&) {
+        free_slots_.push_back(index);
+        return ErrorCode::OutOfMemory;
+    } catch (const std::length_error&) {
         free_slots_.push_back(index);
         return ErrorCode::OutOfMemory;
     }
@@ -231,6 +237,8 @@ ErrorCode NullRenderingDevice::create_texture(
             texture_slots_.emplace_back();
         } catch (const std::bad_alloc&) {
             return ErrorCode::OutOfMemory;
+        } catch (const std::length_error&) {
+            return ErrorCode::OutOfMemory;
         }
         index = static_cast<std::uint32_t>(texture_slots_.size() - 1);
     } else {
@@ -242,6 +250,9 @@ ErrorCode NullRenderingDevice::create_texture(
     try {
         slot.texture.bytes.assign(byte_count, std::byte{0});
     } catch (const std::bad_alloc&) {
+        free_texture_slots_.push_back(index);
+        return ErrorCode::OutOfMemory;
+    } catch (const std::length_error&) {
         free_texture_slots_.push_back(index);
         return ErrorCode::OutOfMemory;
     }

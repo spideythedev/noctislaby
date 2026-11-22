@@ -6,7 +6,8 @@
 namespace nle {
 
 bool InputMap::add_action(const std::string_view name) {
-    if (name.empty() || name.find_first_of("\r\n\0") != std::string_view::npos) {
+    if (name.empty() || name.find_first_of("\r\n") != std::string_view::npos ||
+        name.find('\0') != std::string_view::npos) {
         return false;
     }
 

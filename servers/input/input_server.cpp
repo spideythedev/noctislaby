@@ -51,7 +51,7 @@ void InputServer::process_frame() {
 
             const InputControl control{event.type, event.device, event.code};
             if (event.pressed) {
-                if (!event.echo && pressed_.insert(control).second) {
+                if (pressed_.insert(control).second && !event.echo) {
                     just_pressed_.insert(control);
                 }
             } else if (pressed_.erase(control) != 0) {
@@ -96,6 +96,10 @@ Signal<const InputEvent&>& InputServer::event_signal() noexcept {
 }
 
 bool InputServer::is_valid_event(const InputEvent& event) noexcept {
+    if (event.device < 0) {
+        return false;
+    }
+
     switch (event.type) {
         case InputEventType::Key:
         case InputEventType::MouseButton:
