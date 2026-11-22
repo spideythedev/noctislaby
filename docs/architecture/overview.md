@@ -23,7 +23,7 @@ The current foundation provides:
 - CMake-based C17/C++20 configuration and generated engine version metadata.
 - Core memory allocation, object identity, object registry, reference counting, runtime class factories and signals.
 - String interning, a tagged Variant and foundational 2D/3D math types.
-- Binary file access, canonical virtual resource paths, a versioned persistent UID registry, resource caching, concurrent load deduplication and pluggable format loader/saver dispatch.\n- A deterministic `.nleproject` configuration parser/writer with typed accessors and transactional loading.
+- Binary file access, canonical virtual resource paths, a versioned persistent UID registry, resource caching, concurrent load deduplication and pluggable format loader/saver dispatch.\n- A deterministic `.nleproject` configuration parser/writer with typed accessors and transactional loading.\n- Project creation/opening with descriptor validation, version checks, default settings and main-scene path validation.
 - Node ownership, scene-tree lifecycle, a fixed-timestep main loop with bounded catch-up, frame/physics callbacks and hierarchical spatial transforms.
 - A rendering server, generation-checked resource IDs, null buffer backend and dependency-aware render graph.
 - A versioned C ABI metadata library and cross-platform build/test workflow.

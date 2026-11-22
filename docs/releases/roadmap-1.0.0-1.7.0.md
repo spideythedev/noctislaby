@@ -12,7 +12,7 @@ NLE follows capability-based releases. A version is published only when its acce
 - [ ] Expanded Variant and conversion/operator coverage.
 - [x] Persistent versioned resource UID registry with integrity checks.\n- [ ] Canonical resource paths, project-wide UID remapping and versioned resource serialization.
 - [ ] Async resource loading, dependency tracking and cache policies.
-- [x] Deterministic `.nleproject` configuration parser/writer with transactional load.\n- [ ] Project validation, project manager and reproducible sample project format.
+- [x] Deterministic `.nleproject` configuration parser/writer with transactional load.\n- [x] Project directory creation/opening, descriptor validation and version checks.\n- [ ] Reproducible sample project format and end-to-end launch workflow.
 
 ### Scene and runtime
 - [x] Fixed-timestep MainLoop with bounded catch-up, frame clamping and time scaling.\n- [ ] Platform event loop, high-resolution clock and frame pacing.
