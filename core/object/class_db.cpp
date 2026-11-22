@@ -33,10 +33,9 @@ bool ClassDB::register_class(
         return false;
     }
 
-    classes_.emplace(
-        name,
-        ClassInfo{std::move(name), std::move(parent), std::move(factory)}
-    );
+    const StringName key = name;
+    ClassInfo info{std::move(name), std::move(parent), std::move(factory)};
+    classes_.emplace(key, std::move(info));
 
     return true;
 }
