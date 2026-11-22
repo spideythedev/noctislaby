@@ -30,6 +30,7 @@ configure_file(
 )
 
 add_subdirectory(core)
+add_subdirectory(scripting)
 add_subdirectory(main)
 
 if(NLE_BUILD_TESTS)
