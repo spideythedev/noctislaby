@@ -684,6 +684,16 @@ void test_signals() {
     signal.emit(2);
     expect(total == 13, "disconnected callback is not invoked again");
 
+    nle::Signal<> ordered_signal;
+    std::vector<int> callback_order;
+    expect(ordered_signal.connect([&callback_order] { callback_order.push_back(1); }) != 0,
+           "ordered signal registers first callback");
+    expect(ordered_signal.connect([&callback_order] { callback_order.push_back(2); }) != 0,
+           "ordered signal registers second callback");
+    ordered_signal.emit();
+    expect(callback_order == std::vector<int>{1, 2},
+           "signal callbacks execute in connection order");
+
     nle::ConnectionID self_connection = 0;
     int self_calls = 0;
     self_connection = signal.connect([&](const int) {

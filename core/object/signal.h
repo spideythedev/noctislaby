@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <map>
 #include <mutex>
 #include <unordered_map>
 #include <utility>
@@ -70,7 +71,7 @@ public:
 
 private:
     mutable std::mutex mutex_;
-    std::unordered_map<ConnectionID, Callback> callbacks_;
+    std::map<ConnectionID, Callback> callbacks_;
     ConnectionID next_connection_id_ = 1;
 };
 
