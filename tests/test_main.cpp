@@ -280,6 +280,50 @@ void test_spatial_nodes() {
            "Node3D accepts spatial child");
     expect(child_3d_pointer->get_global_transform().xform({0, 0, 0}) ==
            nle::Vector3{11, 22, 33}, "Node3D composes global transform");
+
+    auto nested_2d = std::make_unique<nle::Node2D>("Nested2D");
+    auto spacer_2d = std::make_unique<nle::Node>("Spacer2D");
+    auto leaf_2d = std::make_unique<nle::Node2D>("Leaf2D");
+    nested_2d->set_position({5, 7});
+    nle::Node2D* nested_2d_pointer = nested_2d.get();
+    nle::Node* spacer_2d_pointer = nested_2d->add_child(std::move(spacer_2d));
+    nle::Node2D* leaf_2d_pointer = leaf_2d.get();
+    expect(spacer_2d_pointer->add_child(std::move(leaf_2d)) == leaf_2d_pointer,
+           "Node2D can be nested below a plain Node");
+    expect(nested_2d_pointer->add_child(std::make_unique<nle::Node>("Tail")) != nullptr,
+           "Node2D accepts non-spatial children");
+
+    auto nested_root = std::make_unique<nle::Node2D>("NestedRoot");
+    nested_root->set_position({5, 7});
+    auto spacer = std::make_unique<nle::Node>("Spacer");
+    auto leaf = std::make_unique<nle::Node2D>("Leaf");
+    leaf->set_position({2, 3});
+    nle::Node2D* leaf_pointer = leaf.get();
+    nle::Node* spacer_pointer = nested_root->add_child(std::move(spacer));
+    expect(spacer_pointer->add_child(std::move(leaf)) == leaf_pointer,
+           "Node2D supports intermediate non-spatial nodes");
+    expect(leaf_pointer->get_global_position() == nle::Vector2{7, 10},
+           "Node2D inherits transform through non-spatial ancestor");
+    expect(leaf_pointer->set_global_position({20, 30}),
+           "Node2D sets global position");
+    expect(leaf_pointer->get_global_position() == nle::Vector2{20, 30},
+           "Node2D global position setter preserves requested position");
+
+    auto nested_root_3d = std::make_unique<nle::Node3D>("NestedRoot3D");
+    nested_root_3d->set_position({5, 7, 9});
+    auto spacer_3d = std::make_unique<nle::Node>("Spacer3D");
+    auto leaf_3d = std::make_unique<nle::Node3D>("Leaf3D");
+    leaf_3d->set_position({2, 3, 4});
+    nle::Node3D* leaf_3d_pointer = leaf_3d.get();
+    nle::Node* spacer_3d_pointer = nested_root_3d->add_child(std::move(spacer_3d));
+    expect(spacer_3d_pointer->add_child(std::move(leaf_3d)) == leaf_3d_pointer,
+           "Node3D supports intermediate non-spatial nodes");
+    expect(leaf_3d_pointer->get_global_position() == nle::Vector3{7, 10, 13},
+           "Node3D inherits transform through non-spatial ancestor");
+    expect(leaf_3d_pointer->set_global_position({20, 30, 40}),
+           "Node3D sets global position");
+    expect(leaf_3d_pointer->get_global_position() == nle::Vector3{20, 30, 40},
+           "Node3D global position setter preserves requested position");
 }
 
 void test_scene_tree() {

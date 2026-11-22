@@ -12,10 +12,38 @@ const char* Node2D::get_class_name() const noexcept {
 }
 
 Transform2D Node2D::get_global_transform() const noexcept {
-    const auto* parent_2d = dynamic_cast<const Node2D*>(get_parent());
-    return parent_2d == nullptr
-        ? transform_
-        : parent_2d->get_global_transform() * transform_;
+    const Node* ancestor = get_parent();
+    while (ancestor != nullptr) {
+        if (const auto* parent_2d = dynamic_cast<const Node2D*>(ancestor)) {
+            return parent_2d->get_global_transform() * transform_;
+        }
+        ancestor = ancestor->get_parent();
+    }
+
+    return transform_;
+}
+
+Vector2 Node2D::get_global_position() const noexcept {
+    return get_global_transform().origin;
+}
+
+bool Node2D::set_global_position(const Vector2 position) noexcept {
+    const Node* ancestor = get_parent();
+    while (ancestor != nullptr) {
+        if (const auto* parent_2d = dynamic_cast<const Node2D*>(ancestor)) {
+            Transform2D inverse;
+            if (!parent_2d->get_global_transform().try_affine_inverse(inverse)) {
+                return false;
+            }
+
+            transform_.origin = inverse.xform(position);
+            return true;
+        }
+        ancestor = ancestor->get_parent();
+    }
+
+    transform_.origin = position;
+    return true;
 }
 
 const Transform2D& Node2D::get_transform() const noexcept {

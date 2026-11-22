@@ -13,6 +13,8 @@ public:
 
     [[nodiscard]] const Transform2D& get_transform() const noexcept;
     [[nodiscard]] Transform2D get_global_transform() const noexcept;
+    [[nodiscard]] Vector2 get_global_position() const noexcept;
+    [[nodiscard]] bool set_global_position(Vector2 position) noexcept;
     void set_transform(const Transform2D& transform) noexcept;
 
     [[nodiscard]] Vector2 get_position() const noexcept;
