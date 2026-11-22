@@ -1,4 +1,5 @@
 #include "resource_loader.h"
+#include "resource_path.h"
 
 #include <algorithm>
 #include <cctype>
@@ -52,21 +53,22 @@ Ref<Resource> ResourceLoader::load(
     const std::string_view path,
     ErrorCode* error
 ) {
-    if (path.empty()) {
+    std::string normalized_path;
+    if (ResourcePath::normalize(path, normalized_path) != ErrorCode::Ok) {
         if (error != nullptr) {
             *error = ErrorCode::InvalidParameter;
         }
         return {};
     }
 
-    if (Ref<Resource> cached = cache_.get(path)) {
+    if (Ref<Resource> cached = cache_.get(normalized_path)) {
         if (error != nullptr) {
             *error = ErrorCode::Ok;
         }
         return cached;
     }
 
-    const std::string extension = get_extension(path);
+    const std::string extension = get_extension(normalized_path);
     const std::shared_ptr<ResourceFormatLoader> loader = find_loader(extension);
 
     if (loader == nullptr) {
@@ -77,7 +79,7 @@ Ref<Resource> ResourceLoader::load(
     }
 
     ErrorCode load_error = ErrorCode::Ok;
-    Ref<Resource> resource = loader->load(path, load_error);
+    Ref<Resource> resource = loader->load(normalized_path, load_error);
 
     if (!resource) {
         if (error != nullptr) {
@@ -87,11 +89,11 @@ Ref<Resource> ResourceLoader::load(
     }
 
     if (resource->get_path().empty()) {
-        resource->set_path(std::string(path));
+        resource->set_path(normalized_path);
     }
 
     if (!cache_.insert(resource)) {
-        Ref<Resource> existing = cache_.get(path);
+        Ref<Resource> existing = cache_.get(normalized_path);
         if (existing) {
             if (error != nullptr) {
                 *error = ErrorCode::Ok;

@@ -6,6 +6,7 @@ add_library(nle_core SHARED
     io/resource_loader.cpp
     io/resource_saver.cpp
     io/resource_uid_registry.cpp
+    io/resource_path.cpp
     logging/logger.cpp
     memory/memory.cpp
     object/class_db.cpp

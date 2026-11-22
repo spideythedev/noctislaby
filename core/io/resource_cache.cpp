@@ -1,4 +1,5 @@
 #include "resource_cache.h"
+#include "resource_path.h"
 
 #include <utility>
 
@@ -9,8 +10,8 @@ bool ResourceCache::insert(const Ref<Resource>& resource) {
         return false;
     }
 
-    const std::string path(resource->get_path());
-    if (path.empty()) {
+    std::string path;
+    if (ResourcePath::normalize(resource->get_path(), path) != ErrorCode::Ok) {
         return false;
     }
 
@@ -19,9 +20,14 @@ bool ResourceCache::insert(const Ref<Resource>& resource) {
 }
 
 Ref<Resource> ResourceCache::get(const std::string_view path) const {
+    std::string normalized;
+    if (ResourcePath::normalize(path, normalized) != ErrorCode::Ok) {
+        return {};
+    }
+
     std::lock_guard lock(mutex_);
 
-    const auto found = resources_.find(std::string(path));
+    const auto found = resources_.find(normalized);
     if (found == resources_.end()) {
         return {};
     }
@@ -30,17 +36,27 @@ Ref<Resource> ResourceCache::get(const std::string_view path) const {
 }
 
 bool ResourceCache::contains(const std::string_view path) const {
+    std::string normalized;
+    if (ResourcePath::normalize(path, normalized) != ErrorCode::Ok) {
+        return false;
+    }
+
     std::lock_guard lock(mutex_);
-    return resources_.contains(std::string(path));
+    return resources_.contains(normalized);
 }
 
 bool ResourceCache::remove(const std::string_view path) {
+    std::string normalized;
+    if (ResourcePath::normalize(path, normalized) != ErrorCode::Ok) {
+        return false;
+    }
+
     Ref<Resource> removed;
 
     {
         std::lock_guard lock(mutex_);
 
-        const auto found = resources_.find(std::string(path));
+        const auto found = resources_.find(normalized);
         if (found == resources_.end()) {
             return false;
         }

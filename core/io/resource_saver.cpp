@@ -1,4 +1,5 @@
 #include "resource_saver.h"
+#include "resource_path.h"
 
 #include <algorithm>
 #include <cctype>
@@ -77,16 +78,17 @@ ErrorCode ResourceSaver::save(
     const std::string_view path,
     const Ref<Resource>& resource
 ) {
-    if (path.empty() || !resource) {
+    std::string normalized_path;
+    if (!resource || ResourcePath::normalize(path, normalized_path) != ErrorCode::Ok) {
         return ErrorCode::InvalidParameter;
     }
 
-    const std::shared_ptr<ResourceFormatSaver> saver = find_saver(get_extension(path));
+    const std::shared_ptr<ResourceFormatSaver> saver = find_saver(get_extension(normalized_path));
     if (saver == nullptr) {
         return ErrorCode::NotFound;
     }
 
-    return saver->save(path, resource);
+    return saver->save(normalized_path, resource);
 }
 
 std::shared_ptr<ResourceFormatSaver> ResourceSaver::find_saver(

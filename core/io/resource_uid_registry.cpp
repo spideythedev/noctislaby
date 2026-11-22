@@ -1,6 +1,7 @@
 #include "resource_uid_registry.h"
 
 #include "file_access.h"
+#include "resource_path.h"
 
 #include <algorithm>
 #include <array>
@@ -75,11 +76,11 @@ std::uint64_t hash_bytes(const std::span<const std::byte> data) noexcept {
 } // namespace
 
 bool ResourceUIDRegistry::register_uid(const ResourceUID uid, const std::string_view path) {
-    if (!uid.is_valid() || path.empty() || path.size() > MaxPathLength) {
+    std::string owned_path;
+    if (!uid.is_valid() || path.size() > MaxPathLength ||
+        ResourcePath::normalize(path, owned_path) != ErrorCode::Ok) {
         return false;
     }
-
-    std::string owned_path(path);
     std::lock_guard lock(mutex_);
 
     const auto uid_found = paths_by_uid_.find(uid.value);
@@ -114,8 +115,13 @@ bool ResourceUIDRegistry::unregister_uid(const ResourceUID uid) {
 }
 
 ResourceUID ResourceUIDRegistry::get_uid(const std::string_view path) const {
+    std::string normalized;
+    if (ResourcePath::normalize(path, normalized) != ErrorCode::Ok) {
+        return {};
+    }
+
     std::lock_guard lock(mutex_);
-    const auto found = uids_by_path_.find(std::string(path));
+    const auto found = uids_by_path_.find(normalized);
     return found == uids_by_path_.end() ? ResourceUID{} : ResourceUID{found->second};
 }
 
@@ -241,7 +247,10 @@ bool ResourceUIDRegistry::load(const std::filesystem::path& file_path) {
             ));
         }
 
-        if (!paths_by_uid.emplace(uid, path).second ||
+        std::string normalized_path;
+        if (ResourcePath::normalize(path, normalized_path) != ErrorCode::Ok ||
+            normalized_path != path ||
+            !paths_by_uid.emplace(uid, path).second ||
             !uids_by_path.emplace(std::move(path), uid).second) {
             return false;
         }

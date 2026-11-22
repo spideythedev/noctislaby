@@ -5,6 +5,7 @@
 #include "io/resource_loader.h"
 #include "io/resource_saver.h"
 #include "io/resource_uid_registry.h"
+#include "io/resource_path.h"
 #include "object/class_db.h"
 #include "math/aabb.h"
 #include "math/basis.h"
@@ -685,7 +686,7 @@ void test_resource_loader() {
     expect(first->get_path() == "res://materials/test.NLERES",
            "resource loader assigns source path");
 
-    nle::Ref<nle::Resource> second = loader.load("res://materials/test.NLERES", &error);
+    nle::Ref<nle::Resource> second = loader.load("res://materials//folder/../test.NLERES", &error);
     expect(second.get() == first.get(), "resource loader returns cached instance");
     expect(format_loader->load_count == 1, "resource cache avoids duplicate format loads");
 
@@ -745,6 +746,28 @@ void test_resources() {
            "resource change connection can be disconnected");
 }
 
+void test_resource_paths() {
+    std::string normalized;
+    expect(nle::ResourcePath::normalize(
+        "RES://textures\\\\stone/./high/../stone.png", normalized
+    ) == nle::ErrorCode::Ok, "resource path normalizes separators and dot segments");
+    expect(normalized == "res://textures/stone/stone.png",
+           "resource path produces canonical URI");
+    expect(nle::ResourcePath::normalize(
+        "user://saves//slot-1/../slot-2.dat", normalized
+    ) == nle::ErrorCode::Ok && normalized == "user://saves/slot-2.dat",
+           "user resource path normalizes repeated separators");
+    expect(nle::ResourcePath::normalize("res://../../outside", normalized) ==
+           nle::ErrorCode::InvalidParameter,
+           "resource path rejects traversal above its scheme root");
+    expect(nle::ResourcePath::normalize("file:///etc/passwd", normalized) ==
+           nle::ErrorCode::InvalidParameter,
+           "resource path rejects unsupported schemes");
+    expect(nle::ResourcePath::normalize("res://", normalized) ==
+           nle::ErrorCode::InvalidParameter,
+           "resource path rejects empty resource names");
+}
+
 void test_resource_uid_registry() {
     nle::ResourceUIDRegistry registry;
     const nle::ResourceUID texture_uid{0x1020304050607080ULL};
@@ -758,7 +781,7 @@ void test_resource_uid_registry() {
            "UID registry rejects the invalid UID");
     expect(!registry.register_uid(texture_uid, "res://textures/other.nleres"),
            "UID registry rejects UID collisions");
-    expect(!registry.register_uid(nle::ResourceUID{99}, "res://textures/stone.nleres"),
+    expect(!registry.register_uid(nle::ResourceUID{99}, "res://textures//stone/../stone.nleres"),
            "UID registry rejects path collisions");
     expect(registry.get_uid("res://textures/stone.nleres") == texture_uid,
            "UID registry resolves path to UID");
@@ -1107,6 +1130,7 @@ int main() {
     test_resource_loader();
     test_resources();
     test_resource_uid_registry();
+    test_resource_paths();
     test_signals();
     test_string_names();
     test_variants();
