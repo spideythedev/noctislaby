@@ -14,4 +14,9 @@ target_include_directories(nle_core
 )
 
 target_compile_features(nle_core PUBLIC cxx_std_20)
+
+if(NLE_DOUBLE_PRECISION)
+    target_compile_definitions(nle_core PUBLIC NLE_DOUBLE_PRECISION)
+endif()
+
 nle_configure_target(nle_core)
