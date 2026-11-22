@@ -36,6 +36,8 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <barrier>
 #include <cmath>
 #include <filesystem>
 #include <cstdint>
@@ -45,9 +47,11 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 #include <unordered_map>
 #include <utility>
+#include <chrono>
 
 namespace {
 
@@ -136,6 +140,25 @@ public:
     }
 
     int load_count = 0;
+};
+
+class ConcurrentTestFormatLoader final : public nle::ResourceFormatLoader {
+public:
+    [[nodiscard]] std::vector<std::string> get_recognized_extensions() const override {
+        return {"nleres"};
+    }
+
+    [[nodiscard]] nle::Ref<nle::Resource> load(
+        const std::string_view,
+        nle::ErrorCode& error
+    ) override {
+        ++load_count;
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        error = nle::ErrorCode::Ok;
+        return nle::make_ref<nle::Resource>();
+    }
+
+    std::atomic<int> load_count{0};
 };
 
 class TestResource final : public nle::RefCounted {
@@ -699,6 +722,43 @@ void test_resource_loader() {
            "empty resource path reports InvalidParameter");
 }
 
+void test_concurrent_resource_loading() {
+    constexpr std::size_t ThreadCount = 8;
+    nle::ResourceLoader loader;
+    auto format_loader = std::make_shared<ConcurrentTestFormatLoader>();
+    expect(loader.add_format_loader(format_loader),
+           "concurrent resource loader registers format handler");
+
+    std::barrier start_gate(static_cast<std::ptrdiff_t>(ThreadCount));
+    std::array<nle::Ref<nle::Resource>, ThreadCount> results;
+    std::array<nle::ErrorCode, ThreadCount> errors{};
+    std::vector<std::thread> workers;
+    workers.reserve(ThreadCount);
+
+    for (std::size_t index = 0; index < ThreadCount; ++index) {
+        workers.emplace_back([&, index] {
+            start_gate.arrive_and_wait();
+            results[index] = loader.load("res://concurrent/shared.nleres", &errors[index]);
+        });
+    }
+
+    for (std::thread& worker : workers) {
+        worker.join();
+    }
+
+    expect(format_loader->load_count.load() == 1,
+           "concurrent requests share one in-flight resource load");
+    expect(std::all_of(results.begin(), results.end(), [](const auto& resource) {
+        return static_cast<bool>(resource);
+    }), "all concurrent resource requests receive a resource");
+    expect(std::all_of(errors.begin(), errors.end(), [](const auto error) {
+        return error == nle::ErrorCode::Ok;
+    }), "all concurrent resource requests receive successful status");
+    expect(std::all_of(results.begin(), results.end(), [&results](const auto& resource) {
+        return resource.get() == results.front().get();
+    }), "concurrent resource requests receive the same cached instance");
+}
+
 void test_resources() {
     nle::Ref<nle::Resource> resource = nle::make_ref<TestTexture>();
     int changed_count = 0;
@@ -1128,6 +1188,7 @@ int main() {
     test_file_access();
     test_resource_saver();
     test_resource_loader();
+    test_concurrent_resource_loading();
     test_resources();
     test_resource_uid_registry();
     test_resource_paths();

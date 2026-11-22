@@ -68,44 +68,85 @@ Ref<Resource> ResourceLoader::load(
         return cached;
     }
 
-    const std::string extension = get_extension(normalized_path);
-    const std::shared_ptr<ResourceFormatLoader> loader = find_loader(extension);
+    std::shared_ptr<LoadState> state;
+    {
+        std::unique_lock lock(loads_mutex_);
 
-    if (loader == nullptr) {
-        if (error != nullptr) {
-            *error = ErrorCode::NotFound;
-        }
-        return {};
-    }
-
-    ErrorCode load_error = ErrorCode::Ok;
-    Ref<Resource> resource = loader->load(normalized_path, load_error);
-
-    if (!resource) {
-        if (error != nullptr) {
-            *error = load_error == ErrorCode::Ok ? ErrorCode::Failed : load_error;
-        }
-        return {};
-    }
-
-    if (resource->get_path().empty()) {
-        resource->set_path(normalized_path);
-    }
-
-    if (!cache_.insert(resource)) {
-        Ref<Resource> existing = cache_.get(normalized_path);
-        if (existing) {
+        if (Ref<Resource> cached = cache_.get(normalized_path)) {
             if (error != nullptr) {
                 *error = ErrorCode::Ok;
             }
-            return existing;
+            return cached;
         }
+
+        const auto found = in_flight_.find(normalized_path);
+        if (found != in_flight_.end()) {
+            state = found->second;
+            state->condition.wait(lock, [&state] {
+                return state->completed;
+            });
+
+            if (error != nullptr) {
+                *error = state->error;
+            }
+            return state->resource;
+        }
+
+        state = std::make_shared<LoadState>();
+        in_flight_.emplace(normalized_path, state);
     }
+
+    Ref<Resource> resource;
+    ErrorCode load_error = ErrorCode::Ok;
+
+    try {
+        const std::string extension = get_extension(normalized_path);
+        const std::shared_ptr<ResourceFormatLoader> loader = find_loader(extension);
+
+        if (loader == nullptr) {
+            load_error = ErrorCode::NotFound;
+        } else {
+            resource = loader->load(normalized_path, load_error);
+            if (!resource && load_error == ErrorCode::Ok) {
+                load_error = ErrorCode::Failed;
+            }
+        }
+
+        if (resource) {
+            if (resource->get_path() != normalized_path) {
+                resource->set_path(normalized_path);
+            }
+
+            if (!cache_.insert(resource)) {
+                Ref<Resource> existing = cache_.get(normalized_path);
+                if (existing) {
+                    resource = std::move(existing);
+                } else {
+                    resource.reset();
+                    load_error = ErrorCode::Failed;
+                }
+            }
+        }
+    } catch (const std::bad_alloc&) {
+        resource.reset();
+        load_error = ErrorCode::OutOfMemory;
+    } catch (...) {
+        resource.reset();
+        load_error = ErrorCode::Failed;
+    }
+
+    {
+        std::lock_guard lock(loads_mutex_);
+        state->resource = resource;
+        state->error = resource ? ErrorCode::Ok : load_error;
+        state->completed = true;
+        in_flight_.erase(normalized_path);
+    }
+    state->condition.notify_all();
 
     if (error != nullptr) {
-        *error = ErrorCode::Ok;
+        *error = state->error;
     }
-
     return resource;
 }
 
