@@ -45,6 +45,8 @@ public:
     }
 };
 
+class TestTexture final : public nle::Resource {};
+
 class TestResource final : public nle::RefCounted {
 public:
     explicit TestResource(int* destruction_count)
@@ -126,7 +128,7 @@ void test_reference_counting() {
 }
 
 void test_resources() {
-    nle::Ref<nle::Resource> resource = nle::make_ref<nle::Resource>();
+    nle::Ref<nle::Resource> resource = nle::make_ref<TestTexture>();
     int changed_count = 0;
 
     const nle::ConnectionID connection = resource->changed_signal().connect(
