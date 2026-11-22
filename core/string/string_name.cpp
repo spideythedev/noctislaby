@@ -3,6 +3,7 @@
 #include <functional>
 #include <mutex>
 #include <unordered_map>
+#include <utility>
 
 namespace nle {
 namespace {
