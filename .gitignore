@@ -1,0 +1,47 @@
+# Build output
+/build/
+/cmake-build-*/
+/out/
+/bin/
+/lib/
+/dist/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.swp
+*~
+
+# Native artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dll
+*.dylib
+*.exe
+*.pdb
+*.ilk
+
+# Generated files
+*.generated.*
+*.gen.cpp
+*.gen.h
+
+# OS
+.DS_Store
+Thumbs.db
