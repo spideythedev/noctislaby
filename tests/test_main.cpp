@@ -21,6 +21,8 @@
 #include "object/object_db.h"
 #include "object/ref_counted.h"
 #include "object/signal.h"
+#include "scene/2d/node_2d.h"
+#include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 #include "string/string_name.h"
@@ -141,6 +143,29 @@ public:
 private:
     int* destruction_count_;
 };
+
+void test_spatial_nodes() {
+    nle::Node2D node_2d;
+    node_2d.set_position({12, 24});
+    expect(node_2d.get_position() == nle::Vector2{12, 24},
+           "Node2D stores local position");
+    expect(std::string_view(node_2d.get_class_name()) == "Node2D",
+           "Node2D reports class name");
+
+    nle::Node3D node_3d;
+    node_3d.set_position({3, 6, 9});
+    expect(node_3d.get_position() == nle::Vector3{3, 6, 9},
+           "Node3D stores local position");
+    expect(std::string_view(node_3d.get_class_name()) == "Node3D",
+           "Node3D reports class name");
+
+    const nle::Transform3D transform{
+        nle::Basis{},
+        {10, 20, 30}
+    };
+    node_3d.set_transform(transform);
+    expect(node_3d.get_transform() == transform, "Node3D stores full transform");
+}
 
 void test_scene_tree() {
     std::vector<std::string> events;
@@ -667,6 +692,7 @@ void test_memory() {
 } // namespace
 
 int main() {
+    test_spatial_nodes();
     test_scene_tree();
     test_error_codes();
     test_class_db();
