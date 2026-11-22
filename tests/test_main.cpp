@@ -1,4 +1,5 @@
 #include "error/error.h"
+#include "object/class_db.h"
 #include "math/vector2.h"
 #include "math/vector3.h"
 #include "math/vector4.h"
@@ -25,7 +26,12 @@ void expect(const bool condition, const std::string_view message) {
     }
 }
 
-class TestObject final : public nle::Object {};
+class TestObject final : public nle::Object {
+public:
+    [[nodiscard]] const char* get_class_name() const noexcept override {
+        return "TestObject";
+    }
+};
 
 class TestResource final : public nle::RefCounted {
 public:
@@ -48,6 +54,27 @@ void test_error_codes() {
            "InvalidParameter error code name");
     expect(nle::error_code_name(ErrorCode::PlatformError) == "PlatformError",
            "PlatformError error code name");
+}
+
+void test_class_db() {
+    nle::ClassDB& classes = nle::ClassDB::instance();
+
+    expect(classes.class_exists(nle::StringName("Object")), "Object base class is registered");
+    expect(classes.register_class<TestObject>("TestObject"), "class registration succeeds");
+    expect(!classes.register_class<TestObject>("TestObject"), "duplicate registration fails");
+    expect(classes.is_parent_class(
+        nle::StringName("TestObject"),
+        nle::StringName("Object")
+    ), "class hierarchy resolves parent");
+
+    std::unique_ptr<nle::Object> instance =
+        classes.instantiate(nle::StringName("TestObject"));
+    expect(instance != nullptr, "registered class can be instantiated");
+    expect(std::string_view(instance->get_class_name()) == "TestObject",
+           "instantiated object reports its class");
+
+    expect(classes.instantiate(nle::StringName("MissingClass")) == nullptr,
+           "unknown class cannot be instantiated");
 }
 
 void test_object_registry() {
@@ -180,6 +207,7 @@ void test_memory() {
 
 int main() {
     test_error_codes();
+    test_class_db();
     test_object_registry();
     test_reference_counting();
     test_string_names();
