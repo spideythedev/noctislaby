@@ -26,7 +26,7 @@ The README's directory map is aspirational in several places: editor, drivers, p
 5. Render graph topological ordering scanned every pass repeatedly. A min-priority ready queue now preserves stable order while reducing scheduling work to O((V + E) log V), excluding dependency construction.
 6. Regression tests cover deterministic signal order and invalid render-graph access declarations.
 
-## Additional systems implemented after the initial audit\n\n- ResourceUIDRegistry provides bidirectional UID/path lookup and a versioned binary database with checksum validation, bounded input, deterministic output and transactional load semantics.\n- MainLoop provides a fixed physics timestep, bounded catch-up, frame-delta clamping, time scaling and interpolation alpha reporting.\n- The latest six-platform CI matrix passed after these changes: Ubuntu, Windows and macOS in Debug and Release.\n\n## Remaining correctness and design risks
+## Additional systems implemented after the initial audit\n\n- ResourceUIDRegistry provides bidirectional UID/path lookup and a versioned binary database with checksum validation, bounded input, deterministic output and transactional load semantics.\n- ResourcePath canonicalizes `res://` and `user://` paths, rejects traversal above virtual roots and blocks unsupported schemes. Resource cache, loader, saver and UID registry use canonical keys.\n- ResourceLoader coalesces concurrent requests for the same canonical path into one in-flight load and publishes a shared result to waiters.\n- MainLoop provides a fixed physics timestep, bounded catch-up, frame-delta clamping, time scaling and interpolation alpha reporting.\n- ProjectConfig reads and writes deterministic section/key project files, supports escaped strings and typed boolean/integer accessors, and loads transactionally.\n- The latest six-platform CI matrix passed after these changes: Ubuntu, Windows and macOS in Debug and Release.\n\n## Remaining correctness and design risks
 
 ### Object lifetime and threading
 - ObjectDB lookup returns a raw pointer after releasing its registry mutex. This is an identity lookup, not a lifetime-pinning handle; cross-thread destruction/use requires a stronger ownership or access protocol.
@@ -37,7 +37,7 @@ The README's directory map is aspirational in several places: editor, drivers, p
 ### Resource pipeline
 - Resource UIDs now have a persistent registry, but path remapping, project-wide canonicalization, import remapping and resource dependency indexing are not implemented.
 - Resource loader/saver dispatch is extension-based and plugin-oriented, but no built-in serialized scene/resource format exists.
-- There is no dependency graph, import database, asynchronous loading, cancellation, load progress or cache policy matrix.
+- There is no resource dependency graph, import database, asynchronous loading API, cancellation, load progress or cache policy matrix. Concurrent synchronous requests are deduplicated, but are not an asynchronous resource pipeline.
 - Cache keys are exact path strings; canonicalization and alias handling remain unspecified.
 
 ### Scene runtime

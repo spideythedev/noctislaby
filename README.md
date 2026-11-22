@@ -62,7 +62,7 @@ The current native foundation includes:
 - Thread-safe signals and interned string identifiers.
 - A tagged Variant value type.
 - 2D/3D vectors, rectangles, AABBs, planes, colors, quaternions, bases and affine transforms.
-- Binary file access, resource metadata, a persistent versioned resource UID registry, resource caching, and pluggable format loader/saver dispatch.
+- Binary file access, a persistent versioned resource UID registry, canonical `res://` and `user://` paths, resource caching, concurrent load deduplication, and pluggable format loader/saver dispatch.\n- A deterministic `.nleproject` configuration reader/writer with typed accessors and transactional parsing.
 - Node ownership, scene-tree lifecycle, a fixed-timestep main loop with bounded physics catch-up, frame/physics callbacks, and transformable Node2D/Node3D types.
 - A backend-neutral rendering server, generation-safe resource identifiers, a null rendering device with buffer resource operations, and a render graph that validates resource hazards and compiles deterministic pass order.
 - Automated core, resource, scene and C-ABI tests.
