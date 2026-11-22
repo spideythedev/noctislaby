@@ -47,15 +47,19 @@ ErrorCode NullRenderingDevice::create_buffer(
         return ErrorCode::InvalidState;
     }
 
+    std::uint32_t index = 0;
+    bool new_slot = false;
+
     try {
-        std::uint32_t index = 0;
         if (free_slots_.empty()) {
             if (slots_.size() >= std::numeric_limits<std::uint32_t>::max()) {
                 return ErrorCode::OutOfMemory;
             }
 
+            free_slots_.reserve(slots_.size() + 1);
             index = static_cast<std::uint32_t>(slots_.size());
             slots_.emplace_back();
+            new_slot = true;
         } else {
             index = free_slots_.back();
             free_slots_.pop_back();
@@ -75,6 +79,13 @@ ErrorCode NullRenderingDevice::create_buffer(
         result = RID::from_parts(index, slot.generation);
         return ErrorCode::Ok;
     } catch (const std::bad_alloc&) {
+        if (new_slot) {
+            free_slots_.push_back(index);
+        } else if (!free_slots_.empty() && free_slots_.back() == index) {
+            // The slot was already returned to the free list by another path.
+        } else {
+            free_slots_.push_back(index);
+        }
         return ErrorCode::OutOfMemory;
     }
 }
@@ -146,13 +157,13 @@ ErrorCode NullRenderingDevice::free_buffer(const RID buffer) {
 
     slot->buffer = {};
     slot->occupied = false;
-    ++slot->generation;
-    if (slot->generation == 0) {
+    --buffer_count_;
+
+    if (slot->generation != std::numeric_limits<std::uint32_t>::max()) {
         ++slot->generation;
+        free_slots_.push_back(buffer.get_index());
     }
 
-    free_slots_.push_back(buffer.get_index());
-    --buffer_count_;
     return ErrorCode::Ok;
 }
 
