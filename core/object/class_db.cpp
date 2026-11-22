@@ -1,5 +1,6 @@
 #include "class_db.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace nle {
@@ -108,6 +109,7 @@ std::vector<StringName> ClassDB::get_class_list() const {
         result.push_back(name);
     }
 
+    std::sort(result.begin(), result.end());
     return result;
 }
 

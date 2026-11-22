@@ -510,6 +510,9 @@ void test_class_db() {
         nle::StringName("TestObject"),
         nle::StringName("Object")
     ), "class hierarchy resolves parent");
+    const std::vector<nle::StringName> registered_classes = classes.get_class_list();
+    expect(std::is_sorted(registered_classes.begin(), registered_classes.end()),
+           "class database returns deterministic sorted class names");
 
     std::unique_ptr<nle::Object> instance =
         classes.instantiate(nle::StringName("TestObject"));
