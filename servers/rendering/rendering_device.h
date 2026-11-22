@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
 
 namespace nle {
@@ -43,7 +44,7 @@ struct BufferDescription final {
 };
 
 struct RenderingDeviceInfo final {
-    std::string_view name;
+    std::string name;
     std::uint32_t api_major = 0;
     std::uint32_t api_minor = 0;
     bool hardware_accelerated = false;
@@ -56,7 +57,7 @@ public:
     [[nodiscard]] virtual ErrorCode initialize() = 0;
     virtual void shutdown() noexcept = 0;
     [[nodiscard]] virtual bool is_initialized() const noexcept = 0;
-    [[nodiscard]] virtual RenderingDeviceInfo get_device_info() const noexcept = 0;
+    [[nodiscard]] virtual RenderingDeviceInfo get_device_info() const = 0;
 
     [[nodiscard]] virtual ErrorCode create_buffer(
         const BufferDescription& description,

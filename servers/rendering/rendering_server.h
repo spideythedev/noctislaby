@@ -20,7 +20,7 @@ public:
     void shutdown() noexcept;
 
     [[nodiscard]] bool is_initialized() const noexcept;
-    [[nodiscard]] RenderingDeviceInfo get_device_info() const noexcept;
+    [[nodiscard]] RenderingDeviceInfo get_device_info() const;
 
     [[nodiscard]] ErrorCode create_buffer(
         const BufferDescription& description,
