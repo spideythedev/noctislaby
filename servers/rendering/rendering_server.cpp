@@ -28,14 +28,10 @@ ErrorCode RenderingServer::initialize(std::unique_ptr<RenderingDevice> device) {
 }
 
 void RenderingServer::shutdown() noexcept {
-    std::unique_ptr<RenderingDevice> device;
-    {
-        std::lock_guard lock(mutex_);
-        device = std::move(device_);
-    }
-
-    if (device != nullptr) {
-        device->shutdown();
+    std::lock_guard lock(mutex_);
+    if (device_ != nullptr) {
+        device_->shutdown();
+        device_.reset();
     }
 }
 
@@ -49,14 +45,43 @@ RenderingDeviceInfo RenderingServer::get_device_info() const noexcept {
     return device_ == nullptr ? RenderingDeviceInfo{} : device_->get_device_info();
 }
 
-RenderingDevice* RenderingServer::get_device() noexcept {
+ErrorCode RenderingServer::create_buffer(
+    const BufferDescription& description,
+    RID& result
+) {
     std::lock_guard lock(mutex_);
-    return device_.get();
+    return device_ == nullptr
+        ? ErrorCode::InvalidState
+        : device_->create_buffer(description, result);
 }
 
-const RenderingDevice* RenderingServer::get_device() const noexcept {
+ErrorCode RenderingServer::update_buffer(
+    const RID buffer,
+    const std::size_t offset,
+    const std::span<const std::byte> data
+) {
     std::lock_guard lock(mutex_);
-    return device_.get();
+    return device_ == nullptr
+        ? ErrorCode::InvalidState
+        : device_->update_buffer(buffer, offset, data);
+}
+
+ErrorCode RenderingServer::read_buffer(
+    const RID buffer,
+    const std::size_t offset,
+    const std::span<std::byte> destination
+) const {
+    std::lock_guard lock(mutex_);
+    return device_ == nullptr
+        ? ErrorCode::InvalidState
+        : device_->read_buffer(buffer, offset, destination);
+}
+
+ErrorCode RenderingServer::free_buffer(const RID buffer) {
+    std::lock_guard lock(mutex_);
+    return device_ == nullptr
+        ? ErrorCode::InvalidState
+        : device_->free_buffer(buffer);
 }
 
 } // namespace nle
