@@ -1,5 +1,6 @@
 #include "error/error.h"
 #include "config/project_config.h"
+#include "config/project.h"
 #include "io/file_access.h"
 #include "io/resource.h"
 #include "io/resource_cache.h"
@@ -760,6 +761,62 @@ void test_concurrent_resource_loading() {
     }), "concurrent resource requests receive the same cached instance");
 }
 
+void test_project() {
+    const std::filesystem::path project_root =
+        std::filesystem::temp_directory_path() / "noctislaby-project-create-test";
+    std::error_code filesystem_error;
+    std::filesystem::remove_all(project_root, filesystem_error);
+
+    expect(nle::Project::create(project_root, "NoctisLaby Sample") == nle::ErrorCode::Ok,
+           "project manager creates a project directory");
+    expect(nle::Project::create(project_root, "Duplicate") == nle::ErrorCode::AlreadyExists,
+           "project manager refuses to overwrite an existing project");
+
+    nle::Project project;
+    expect(nle::Project::load(project_root, project) == nle::ErrorCode::Ok,
+           "project manager opens a project directory");
+    expect(project.get_name() == "NoctisLaby Sample",
+           "project manager loads project identity");
+    expect(project.get_file_path().filename() == nle::Project::ProjectFileName,
+           "project manager resolves the project descriptor");
+    expect(project.get_root_path() == std::filesystem::absolute(project_root).lexically_normal(),
+           "project manager resolves the project root");
+    expect(project.get_config().get_value("rendering", "renderer") ==
+           std::optional<std::string>("null"),
+           "new projects receive default renderer settings");
+
+    expect(project.get_config().set_value(
+        "application", "main_scene", "res://scenes/./main.nlescene"
+    ), "project settings accept a main scene path");
+    expect(project.save() == nle::ErrorCode::Ok,
+           "project manager saves modified project settings");
+
+    nle::Project reopened;
+    expect(nle::Project::load(project_root, reopened) == nle::ErrorCode::Ok,
+           "project manager reopens saved settings");
+    expect(reopened.get_config().get_value("application", "main_scene") ==
+           std::optional<std::string>("res://scenes/main.nlescene"),
+           "project manager canonicalizes the configured main scene");
+
+    const std::filesystem::path invalid_root =
+        std::filesystem::temp_directory_path() / "noctislaby-project-invalid-version";
+    std::filesystem::remove_all(invalid_root, filesystem_error);
+    expect(nle::Project::create(invalid_root, "Invalid Version Test") == nle::ErrorCode::Ok,
+           "project manager creates invalid-version fixture");
+    nle::ProjectConfig invalid_config;
+    expect(invalid_config.set_value("application", "name", "Invalid Version Test"),
+           "project config sets invalid-version fixture name");
+    expect(invalid_config.set_value("application", "config_version", "99"),
+           "project config sets unsupported version");
+    expect(invalid_config.save(invalid_root / nle::Project::ProjectFileName) ==
+           nle::ErrorCode::Ok, "project config writes unsupported version fixture");
+    expect(nle::Project::load(invalid_root, reopened) == nle::ErrorCode::NotImplemented,
+           "project manager rejects unsupported project versions");
+
+    std::filesystem::remove_all(project_root, filesystem_error);
+    std::filesystem::remove_all(invalid_root, filesystem_error);
+}
+
 void test_project_config() {
     nle::ProjectConfig config;
     expect(config.set_value("application", "name", "NoctisLaby Test"),
@@ -1258,6 +1315,7 @@ int main() {
     test_concurrent_resource_loading();
     test_resources();
     test_project_config();
+    test_project();
     test_resource_uid_registry();
     test_resource_paths();
     test_signals();

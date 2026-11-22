@@ -1,4 +1,5 @@
 add_library(nle_core SHARED
+    config/project.cpp
     config/project_config.cpp
     error/error.cpp
     io/file_access.cpp
