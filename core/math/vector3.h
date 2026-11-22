@@ -40,7 +40,7 @@ struct Vector3 final {
 
     [[nodiscard]] Vector3 normalized() const noexcept {
         const real_t magnitude = length();
-        return magnitude > REAL_EPSILON ? *this / magnitude : Vector3{};
+        return magnitude > REAL_EPSILON ? Vector3{x / magnitude, y / magnitude, z / magnitude} : Vector3{};
     }
 
     [[nodiscard]] constexpr bool is_zero() const noexcept {
