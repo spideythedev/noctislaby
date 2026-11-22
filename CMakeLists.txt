@@ -31,6 +31,7 @@ configure_file(
 
 add_subdirectory(core)
 add_subdirectory(scene)
+add_subdirectory(servers)
 add_subdirectory(scripting)
 add_subdirectory(main)
 
