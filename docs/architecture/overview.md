@@ -19,15 +19,16 @@ The architecture separates engine-facing interfaces from platform and hardware i
 
 ## Current implementation
 
-The initial foundation provides:
-- CMake-based C17/C++20 configuration.
-- Generated engine version metadata.
-- A small core static library.
-- A thread-safe console logger.
-- A typed error-code foundation.
-- A native runtime executable.
+The current foundation provides:
+- CMake-based C17/C++20 configuration and generated engine version metadata.
+- Core memory allocation, object identity, object registry, reference counting, runtime class factories and signals.
+- String interning, a tagged Variant and foundational 2D/3D math types.
+- Binary file access, resource metadata, resource caching and pluggable format loader/saver dispatch.
+- Node ownership, scene-tree lifecycle, frame/physics callbacks and hierarchical spatial transforms.
+- A rendering server, generation-checked resource IDs, null buffer backend and dependency-aware render graph.
+- A versioned C ABI metadata library and cross-platform build/test workflow.
 
-These are initial building blocks, not claims of engine feature parity.
+This is a functional early engine foundation, not a complete editor, game runtime or claim of Godot feature parity.
 
 ## Architectural constraints
 
