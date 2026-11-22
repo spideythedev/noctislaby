@@ -118,9 +118,13 @@ const ResourceCache& ResourceLoader::get_cache() const noexcept {
 std::shared_ptr<ResourceFormatLoader> ResourceLoader::find_loader(
     const std::string_view extension
 ) const {
-    std::lock_guard lock(loaders_mutex_);
+    std::vector<std::shared_ptr<ResourceFormatLoader>> loaders;
+    {
+        std::lock_guard lock(loaders_mutex_);
+        loaders = loaders_;
+    }
 
-    for (const auto& loader : loaders_) {
+    for (const auto& loader : loaders) {
         const std::vector<std::string> extensions = loader->get_recognized_extensions();
 
         const auto found = std::find_if(
