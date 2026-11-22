@@ -5,6 +5,7 @@ add_library(nle_core STATIC
     object/object.cpp
     object/object_db.cpp
     string/string_name.cpp
+    variant/variant.cpp
 )
 
 target_include_directories(nle_core
