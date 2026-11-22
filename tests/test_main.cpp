@@ -216,6 +216,19 @@ void test_render_graph() {
     expect(cyclic.compile(order) == nle::ErrorCode::InvalidState && order.empty(),
            "render graph detects dependency cycles");
 
+    nle::RenderGraph reordered;
+    nle::RenderGraphPassId earlier_declared = 0;
+    nle::RenderGraphPassId prerequisite = 0;
+    expect(reordered.add_pass("consumer", {}, earlier_declared) == nle::ErrorCode::Ok,
+           "render graph declares consumer before prerequisite");
+    expect(reordered.add_pass("producer", {}, prerequisite) == nle::ErrorCode::Ok,
+           "render graph declares prerequisite after consumer");
+    expect(reordered.add_dependency(earlier_declared, prerequisite) == nle::ErrorCode::Ok,
+           "render graph records forward dependency");
+    expect(reordered.compile(order) == nle::ErrorCode::Ok &&
+           order == std::vector<nle::RenderGraphPassId>{prerequisite, earlier_declared},
+           "render graph honors forward dependencies deterministically");
+
     nle::RenderGraph invalid_declaration;
     nle::RenderGraphResourceId imported = 0;
     expect(invalid_declaration.create_resource("imported", true, imported) ==
@@ -316,7 +329,8 @@ void test_rendering_device() {
     expect(server.initialize(std::make_unique<nle::NullRenderingDevice>()) ==
            nle::ErrorCode::Ok, "rendering server initializes selected backend");
     expect(server.is_initialized(), "rendering server reports initialized");
-    expect(server.get_device_info().name == "NoctisLaby Null Device",
+    const nle::RenderingDeviceInfo device_info = server.get_device_info();
+    expect(device_info.name == "NoctisLaby Null Device",
            "rendering server exposes backend information");
     expect(server.initialize(std::make_unique<nle::NullRenderingDevice>()) ==
            nle::ErrorCode::AlreadyExists,
@@ -327,6 +341,8 @@ void test_rendering_device() {
            "rendering server forwards buffer release");
     server.shutdown();
     expect(!server.is_initialized(), "rendering server shuts down backend");
+    expect(device_info.name == "NoctisLaby Null Device",
+           "device metadata remains valid after backend shutdown");
 }
 
 void test_spatial_nodes() {
