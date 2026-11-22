@@ -1,6 +1,7 @@
 #include "render_graph.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -78,7 +79,11 @@ ErrorCode RenderGraph::add_pass(
         }
     }
 
-    passes_.push_back(Pass{std::string(name), {resources.begin(), resources.end()}, {}});
+    passes_.push_back(Pass{
+        std::string(name),
+        std::vector<RenderGraphResourceUse>(resources.begin(), resources.end()),
+        {}
+    });
     result = static_cast<RenderGraphPassId>(passes_.size());
     return ErrorCode::Ok;
 }
