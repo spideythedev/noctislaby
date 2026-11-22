@@ -34,7 +34,12 @@ struct Plane final {
     }
 
     [[nodiscard]] constexpr Vector3 project(const Vector3 point) const noexcept {
-        return point - normal * distance_to(point);
+        const real_t normal_length_squared = normal.length_squared();
+        if (normal_length_squared <= REAL_EPSILON) {
+            return point;
+        }
+
+        return point - normal * (distance_to(point) / normal_length_squared);
     }
 
     [[nodiscard]] bool intersect_ray(
