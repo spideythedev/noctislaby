@@ -16,6 +16,7 @@ add_library(nle_core SHARED
     object/object_db.cpp
     string/string_name.cpp
     variant/variant.cpp
+    variant/variant_serializer.cpp
 )
 
 target_include_directories(nle_core

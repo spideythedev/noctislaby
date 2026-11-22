@@ -38,6 +38,7 @@
 #include "scene/main/scene_tree.h"
 #include "string/string_name.h"
 #include "variant/variant.h"
+#include "variant/variant_serializer.h"
 
 #include <algorithm>
 #include <array>
@@ -1058,6 +1059,49 @@ void test_project() {
     std::filesystem::remove_all(invalid_root, filesystem_error);
 }
 
+void test_variant_serializer() {
+    const std::array<nle::Variant, 8> values{
+        nle::Variant{},
+        nle::Variant(true),
+        nle::Variant(std::int64_t{-1234567890123LL}),
+        nle::Variant(nle::real_t{3.125}),
+        nle::Variant(std::string("NLE\0Variant", 11)),
+        nle::Variant(nle::Vector2{1.25F, -2.5F}),
+        nle::Variant(nle::Vector3{1, 2, 3}),
+        nle::Variant(nle::Vector4{1, 2, 3, 4})
+    };
+
+    for (const nle::Variant& original : values) {
+        std::vector<std::byte> bytes;
+        expect(nle::VariantSerializer::serialize(original, bytes) == nle::ErrorCode::Ok,
+               "variant serializer encodes supported values");
+        nle::Variant restored(std::int64_t{999});
+        expect(nle::VariantSerializer::deserialize(bytes, restored) == nle::ErrorCode::Ok,
+               "variant serializer decodes supported values");
+        expect(restored == original,
+               "variant serializer preserves exact typed values");
+    }
+
+    std::vector<std::byte> corrupted;
+    expect(nle::VariantSerializer::serialize(nle::Variant("checksum"), corrupted) ==
+           nle::ErrorCode::Ok, "variant serializer creates checksum fixture");
+    corrupted.back() ^= std::byte{0x01};
+    nle::Variant unchanged("preserved");
+    expect(nle::VariantSerializer::deserialize(corrupted, unchanged) ==
+           nle::ErrorCode::InvalidParameter,
+           "variant serializer rejects checksum corruption");
+    expect(unchanged == nle::Variant("preserved"),
+           "failed variant decode leaves destination unchanged");
+
+    std::vector<std::byte> truncated;
+    expect(nle::VariantSerializer::serialize(nle::Variant(std::int64_t{42}), truncated) ==
+           nle::ErrorCode::Ok, "variant serializer creates truncation fixture");
+    truncated.pop_back();
+    expect(nle::VariantSerializer::deserialize(truncated, unchanged) ==
+           nle::ErrorCode::InvalidParameter,
+           "variant serializer rejects truncated data");
+}
+
 void test_project_config() {
     nle::ProjectConfig config;
     expect(config.set_value("application", "name", "NoctisLaby Test"),
@@ -1559,6 +1603,7 @@ int main() {
     test_concurrent_resource_loading();
     test_resources();
     test_project_config();
+    test_variant_serializer();
     test_project();
     test_resource_uid_registry();
     test_resource_paths();
