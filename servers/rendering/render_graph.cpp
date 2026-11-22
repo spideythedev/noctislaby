@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <limits>
 #include <functional>
+#include <limits>
 #include <new>
 #include <queue>
 #include <stdexcept>
@@ -50,7 +50,7 @@ ErrorCode RenderGraph::create_resource(
     }
 
     try {
-        resources_.push_back(Resource{std::string(name), imported});
+            resources_.push_back(Resource{std::string(name), imported});
     } catch (const std::bad_alloc&) {
         return ErrorCode::OutOfMemory;
     } catch (const std::length_error&) {
@@ -100,11 +100,11 @@ ErrorCode RenderGraph::add_pass(
     }
 
     try {
-        passes_.push_back(Pass{
-            std::string(name),
-            std::vector<RenderGraphResourceUse>(resources.begin(), resources.end()),
-            {}
-        });
+            passes_.push_back(Pass{
+                std::string(name),
+                std::vector<RenderGraphResourceUse>(resources.begin(), resources.end()),
+                {}
+            });
     } catch (const std::bad_alloc&) {
         return ErrorCode::OutOfMemory;
     } catch (const std::length_error&) {
@@ -143,84 +143,85 @@ ErrorCode RenderGraph::compile(std::vector<RenderGraphPassId>& order) const {
     order.clear();
 
     try {
-    const std::size_t pass_count = passes_.size();
-    std::vector<std::vector<std::size_t>> edges(pass_count);
-    std::vector<std::size_t> indegree(pass_count, 0);
-    std::vector<std::ptrdiff_t> last_writer(resources_.size(), -1);
-    std::vector<std::vector<std::size_t>> readers(resources_.size());
+            const std::size_t pass_count = passes_.size();
+        std::vector<std::vector<std::size_t>> edges(pass_count);
+        std::vector<std::size_t> indegree(pass_count, 0);
+        std::vector<std::size_t> last_writer(resources_.size(), pass_count);
+        std::vector<std::vector<std::size_t>> readers(resources_.size());
 
-    for (std::size_t pass_index = 0; pass_index < pass_count; ++pass_index) {
-        const Pass& pass = passes_[pass_index];
+        for (std::size_t pass_index = 0; pass_index < pass_count; ++pass_index) {
+            const Pass& pass = passes_[pass_index];
 
-        for (const RenderGraphPassId prerequisite : pass.dependencies) {
-            add_edge(edges, indegree, prerequisite - 1, pass_index);
-        }
-
-        for (const RenderGraphResourceUse& use : pass.resources) {
-            const std::size_t resource_index = use.resource - 1;
-            const std::ptrdiff_t writer = last_writer[resource_index];
-            const bool imported = resources_[resource_index].imported;
-            const bool reads = use.access != RenderGraphAccess::Write;
-            const bool writes = use.access != RenderGraphAccess::Read;
-
-            if (reads && writer < 0 && !imported) {
-                return ErrorCode::InvalidState;
+            for (const RenderGraphPassId prerequisite : pass.dependencies) {
+                add_edge(edges, indegree, prerequisite - 1, pass_index);
             }
 
-            if (writer >= 0) {
-                add_edge(
-                    edges,
-                    indegree,
-                    static_cast<std::size_t>(writer),
-                    pass_index
-                );
-            }
+            for (const RenderGraphResourceUse& use : pass.resources) {
+                const std::size_t resource_index = use.resource - 1;
+                const std::size_t writer = last_writer[resource_index];
+                const bool has_writer = writer != pass_count;
+                const bool imported = resources_[resource_index].imported;
+                const bool reads = use.access != RenderGraphAccess::Write;
+                const bool writes = use.access != RenderGraphAccess::Read;
 
-            if (writes) {
-                for (const std::size_t reader : readers[resource_index]) {
-                    add_edge(edges, indegree, reader, pass_index);
+                if (reads && !has_writer && !imported) {
+                    return ErrorCode::InvalidState;
                 }
-                readers[resource_index].clear();
-                last_writer[resource_index] = static_cast<std::ptrdiff_t>(pass_index);
-            } else {
-                readers[resource_index].push_back(pass_index);
+
+                if (has_writer) {
+                    add_edge(
+                        edges,
+                        indegree,
+                        writer,
+                        pass_index
+                    );
+                }
+
+                if (writes) {
+                    for (const std::size_t reader : readers[resource_index]) {
+                        add_edge(edges, indegree, reader, pass_index);
+                    }
+                    readers[resource_index].clear();
+                    last_writer[resource_index] = pass_index;
+                } else {
+                    readers[resource_index].push_back(pass_index);
+                }
             }
         }
-    }
 
-    std::priority_queue<
-        std::size_t,
-        std::vector<std::size_t>,
-        std::greater<>
-    > ready;
-    for (std::size_t index = 0; index < pass_count; ++index) {
-        if (indegree[index] == 0) {
-            ready.push(index);
-        }
-    }
-
-    std::vector<RenderGraphPassId> compiled;
-    compiled.reserve(pass_count);
-
-    while (!ready.empty()) {
-        const std::size_t next = ready.top();
-        ready.pop();
-        compiled.push_back(static_cast<RenderGraphPassId>(next + 1));
-
-        for (const std::size_t dependent : edges[next]) {
-            --indegree[dependent];
-            if (indegree[dependent] == 0) {
-                ready.push(dependent);
+        std::priority_queue<
+            std::size_t,
+            std::vector<std::size_t>,
+            std::greater<>
+        > ready;
+        for (std::size_t index = 0; index < pass_count; ++index) {
+            if (indegree[index] == 0) {
+                ready.push(index);
             }
         }
-    }
 
-    if (compiled.size() != pass_count) {
-        return ErrorCode::InvalidState;
-    }
+        std::vector<RenderGraphPassId> compiled;
+        compiled.reserve(pass_count);
 
-    order = std::move(compiled);
-    return ErrorCode::Ok;
+        while (!ready.empty()) {
+            const std::size_t next = ready.top();
+            ready.pop();
+            compiled.push_back(static_cast<RenderGraphPassId>(next + 1));
+
+            for (const std::size_t dependent : edges[next]) {
+                --indegree[dependent];
+                if (indegree[dependent] == 0) {
+                    ready.push(dependent);
+                }
+            }
+        }
+
+        if (compiled.size() != pass_count) {
+            return ErrorCode::InvalidState;
+        }
+
+        order = std::move(compiled);
+        return ErrorCode::Ok;
     } catch (const std::bad_alloc&) {
         order.clear();
         return ErrorCode::OutOfMemory;
