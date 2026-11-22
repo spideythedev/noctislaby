@@ -1,4 +1,4 @@
-add_library(nle_core STATIC
+add_library(nle_core SHARED
     error/error.cpp
     io/file_access.cpp
     io/resource.cpp
@@ -20,7 +20,7 @@ target_include_directories(nle_core
         "${CMAKE_CURRENT_BINARY_DIR}/../generated"
 )
 
-set_target_properties(nle_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(nle_core PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_compile_features(nle_core PUBLIC cxx_std_20)
 
