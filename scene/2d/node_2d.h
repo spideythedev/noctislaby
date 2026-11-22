@@ -12,6 +12,7 @@ public:
     [[nodiscard]] const char* get_class_name() const noexcept override;
 
     [[nodiscard]] const Transform2D& get_transform() const noexcept;
+    [[nodiscard]] Transform2D get_global_transform() const noexcept;
     void set_transform(const Transform2D& transform) noexcept;
 
     [[nodiscard]] Vector2 get_position() const noexcept;
