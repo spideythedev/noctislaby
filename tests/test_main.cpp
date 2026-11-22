@@ -4,6 +4,8 @@
 #include "object/class_db.h"
 #include "math/aabb.h"
 #include "math/basis.h"
+#include "math/color.h"
+#include "math/plane.h"
 #include "math/quaternion.h"
 #include "math/rect2.h"
 #include "math/vector2.h"
@@ -241,6 +243,41 @@ void test_variants() {
     expect(nle::Variant(std::int32_t{123}) == integer, "integer widths share Variant type");
 }
 
+void test_color() {
+    const nle::Color srgb{0.5F, 0.25F, 0.75F, 0.8F};
+    const nle::Color linear = nle::Color::from_srgb(srgb);
+    const nle::Color restored = linear.to_srgb();
+
+    expect(std::abs(restored.r - srgb.r) < nle::real_t{0.0001F} &&
+           std::abs(restored.g - srgb.g) < nle::real_t{0.0001F} &&
+           std::abs(restored.b - srgb.b) < nle::real_t{0.0001F},
+           "sRGB and linear color conversion round trip");
+    expect(restored.a == srgb.a, "color conversion preserves alpha");
+
+    const nle::Color clamped = nle::Color{2, -1, 0.5F, 1.5F}.clamped();
+    expect(clamped == nle::Color{1, 0, 0.5F, 1}, "color clamping");
+    expect(nle::Color{1, 0.5F, 0.25F, 0.5F}.premultiplied() ==
+           nle::Color{0.5F, 0.25F, 0.125F, 0.5F}, "premultiplied alpha");
+}
+
+void test_plane() {
+    const nle::Plane plane = nle::Plane::from_point_normal({0, 2, 0}, {0, 2, 0});
+    expect(plane.has_point({0, 2, 0}), "plane contains defining point");
+
+    const nle::Vector3 projected = plane.project({1, 4, 3});
+    expect(std::abs(projected.x - nle::real_t{1}) < nle::real_t{0.0001F} &&
+           std::abs(projected.y - nle::real_t{2}) < nle::real_t{0.0001F} &&
+           std::abs(projected.z - nle::real_t{3}) < nle::real_t{0.0001F},
+           "plane projection handles non-unit normal");
+
+    nle::Vector3 hit;
+    expect(plane.intersect_ray({0, 0, 0}, {0, 1, 0}, hit),
+           "ray intersects plane");
+    expect(hit == nle::Vector3{0, 2, 0}, "ray-plane intersection point");
+    expect(!plane.intersect_ray({0, 3, 0}, {0, 1, 0}, hit),
+           "ray pointing away from plane does not intersect");
+}
+
 void test_transform2d() {
     const nle::Transform2D transform{
         {2, 0},
@@ -421,6 +458,8 @@ int main() {
     test_string_names();
     test_variants();
     test_quaternions();
+    test_color();
+    test_plane();
     test_transform2d();
     test_transforms();
     test_geometry();
