@@ -28,6 +28,10 @@ bool Node::set_name(std::string name) {
         return false;
     }
 
+    if (name_ == name) {
+        return true;
+    }
+
     if (parent_ != nullptr && parent_->has_child_name(name)) {
         return false;
     }
