@@ -1,6 +1,6 @@
 #pragma once
 
-#include "main/node.h"
+#include "node.h"
 
 #include <limits>
 
