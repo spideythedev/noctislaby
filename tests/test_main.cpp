@@ -904,7 +904,9 @@ void test_scene_timer() {
            "timer rejects invalid wait times");
     timer_ptr->set_one_shot(true);
     int timeout_count = 0;
-    timer_ptr->timeout_signal().connect([&timeout_count]() { ++timeout_count; });
+    const nle::ConnectionID timeout_connection =
+        timer_ptr->timeout_signal().connect([&timeout_count]() { ++timeout_count; });
+    expect(timeout_connection != 0, "timer timeout signal connection is valid");
     expect(root->add_child(std::move(timer)) != nullptr, "timer attaches to scene tree");
     expect(tree.set_root(std::move(root)) && tree.initialize(),
            "timer scene tree initializes");
@@ -955,7 +957,8 @@ void test_scene_tree_scene_change() {
     LifecycleNode* second_ptr = second.get();
     expect(tree.change_scene(std::move(second)), "scene change queues a valid scene");
     expect(tree.has_pending_scene_change(), "scene change reports pending state");
-    expect(tree.get_root() == first_ptr, "current scene remains active until frame boundary");
+    expect(tree.get_root() != nullptr && tree.get_root()->get_name() == "First",
+           "current scene remains active until frame boundary");
 
     tree.process_frame(1.0 / 60.0);
     expect(tree.get_root() == second_ptr, "frame boundary installs replacement scene");
