@@ -4,6 +4,7 @@
 #include "object/signal.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -43,6 +44,8 @@ public:
 
     void set_process_enabled(bool enabled) noexcept;
     [[nodiscard]] bool is_process_enabled() const noexcept;
+    void set_process_priority(std::int32_t priority) noexcept;
+    [[nodiscard]] std::int32_t get_process_priority() const noexcept;
 
     [[nodiscard]] Signal<>& tree_entered_signal() noexcept;
     [[nodiscard]] Signal<>& ready_signal() noexcept;
@@ -74,6 +77,7 @@ private:
     std::vector<std::unique_ptr<Node>> children_;
     TreeState tree_state_ = TreeState::Outside;
     bool process_enabled_ = true;
+    std::int32_t process_priority_ = 0;
 
     Signal<> tree_entered_;
     Signal<> ready_;

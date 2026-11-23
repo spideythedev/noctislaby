@@ -136,6 +136,14 @@ bool Node::is_process_enabled() const noexcept {
     return process_enabled_;
 }
 
+void Node::set_process_priority(const std::int32_t priority) noexcept {
+    process_priority_ = priority;
+}
+
+std::int32_t Node::get_process_priority() const noexcept {
+    return process_priority_;
+}
+
 Signal<>& Node::tree_entered_signal() noexcept {
     return tree_entered_;
 }

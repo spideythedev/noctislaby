@@ -42,14 +42,26 @@ bool SceneTree::initialize() {
 
 void SceneTree::process_frame(const double delta) {
     if (initialized_ && root_ != nullptr) {
-        root_->process_recursive(delta);
+        const std::vector<ObjectID> order = get_processing_order();
+        for (const ObjectID id : order) {
+            auto* node = dynamic_cast<Node*>(ObjectDB::get_instance(id));
+            if (node != nullptr && node->is_inside_tree() && node->process_enabled_) {
+                node->_process(delta);
+            }
+        }
         flush_deferred_deletions();
     }
 }
 
 void SceneTree::physics_frame(const double delta) {
     if (initialized_ && root_ != nullptr) {
-        root_->physics_process_recursive(delta);
+        const std::vector<ObjectID> order = get_processing_order();
+        for (const ObjectID id : order) {
+            auto* node = dynamic_cast<Node*>(ObjectDB::get_instance(id));
+            if (node != nullptr && node->is_inside_tree() && node->process_enabled_) {
+                node->_physics_process(delta);
+            }
+        }
         flush_deferred_deletions();
     }
 }
@@ -97,6 +109,40 @@ std::size_t SceneTree::get_queued_deletion_count() const noexcept {
 
 bool SceneTree::is_initialized() const noexcept {
     return initialized_;
+}
+
+std::vector<ObjectID> SceneTree::get_processing_order() const {
+    std::vector<ObjectID> order;
+    if (root_ == nullptr) {
+        return order;
+    }
+
+    std::vector<ObjectID> pending{root_->get_instance_id()};
+    while (!pending.empty()) {
+        const ObjectID id = pending.back();
+        pending.pop_back();
+
+        Node* node = Node::resolve_node(id);
+        if (node == nullptr || !node->is_inside_tree()) {
+            continue;
+        }
+
+        order.push_back(id);
+        const std::vector<ObjectID> children = node->snapshot_children();
+        for (auto child = children.rbegin(); child != children.rend(); ++child) {
+            pending.push_back(*child);
+        }
+    }
+
+    std::stable_sort(order.begin(), order.end(), [](const ObjectID left, const ObjectID right) {
+        const Node* left_node = Node::resolve_node(left);
+        const Node* right_node = Node::resolve_node(right);
+        if (left_node == nullptr || right_node == nullptr) {
+            return false;
+        }
+        return left_node->get_process_priority() < right_node->get_process_priority();
+    });
+    return order;
 }
 
 void SceneTree::flush_deferred_deletions() {

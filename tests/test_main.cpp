@@ -816,6 +816,18 @@ void test_scene_tree() {
     expect(events == std::vector<std::string>{"Root.physics", "Child.physics"},
            "scene tree physics processes parent before child");
 
+    child_pointer->set_process_priority(-10);
+    events.clear();
+    tree.process_frame(1.0 / 60.0);
+    expect(events == std::vector<std::string>{"Child.process", "Root.process"},
+           "scene tree processes lower-priority nodes first");
+
+    events.clear();
+    tree.physics_frame(1.0 / 60.0);
+    expect(events == std::vector<std::string>{"Child.physics", "Root.physics"},
+           "scene tree applies process priorities to physics callbacks");
+
+    child_pointer->set_process_priority(0);
     events.clear();
     std::unique_ptr<nle::Node> removed = tree.get_root()->remove_child(child_pointer);
     expect(removed.get() == child_pointer, "node returns removed child ownership");

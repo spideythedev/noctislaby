@@ -29,6 +29,7 @@ public:
 
 private:
     void flush_deferred_deletions();
+    [[nodiscard]] std::vector<ObjectID> get_processing_order() const;
 
     std::unique_ptr<Node> root_;
     std::vector<ObjectID> deletion_queue_;
