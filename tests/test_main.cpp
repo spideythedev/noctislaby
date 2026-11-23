@@ -850,8 +850,8 @@ void test_deferred_node_deletion() {
 
     events.clear();
     tree.process_frame(1.0 / 60.0);
-    expect(events == std::vector<std::string>{"Root.process"},
-           "queued child remains alive only until frame deletion flush");
+    expect(events == std::vector<std::string>{"Root.process", "Child.process"},
+           "queued child remains alive through traversal before frame deletion flush");
     expect(tree.get_root()->get_child_count() == 0,
            "scene tree removes queued child after frame processing");
     expect(tree.get_queued_deletion_count() == 0,
