@@ -37,7 +37,6 @@ bool SceneTree::initialize() {
     initialized_ = true;
     root_->enter_tree_recursive();
     root_->ready_recursive();
-    flush_deferred_deletions();
     return true;
 }
 
