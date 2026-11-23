@@ -21,6 +21,8 @@ public:
     [[nodiscard]] bool initialize();
     void process_frame(double delta);
     void physics_frame(double delta);
+    void set_paused(bool paused) noexcept;
+    [[nodiscard]] bool is_paused() const noexcept;
     void shutdown();
 
     [[nodiscard]] bool queue_free(Node* node);
@@ -30,10 +32,12 @@ public:
 private:
     void flush_deferred_deletions();
     [[nodiscard]] std::vector<ObjectID> get_processing_order() const;
+    [[nodiscard]] bool can_process_node(const Node& node) const noexcept;
 
     std::unique_ptr<Node> root_;
     std::vector<ObjectID> deletion_queue_;
     bool initialized_ = false;
+    bool paused_ = false;
 };
 
 } // namespace nle

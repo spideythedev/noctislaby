@@ -144,6 +144,14 @@ std::int32_t Node::get_process_priority() const noexcept {
     return process_priority_;
 }
 
+void Node::set_process_mode(const ProcessMode mode) noexcept {
+    process_mode_ = mode;
+}
+
+Node::ProcessMode Node::get_process_mode() const noexcept {
+    return process_mode_;
+}
+
 Signal<>& Node::tree_entered_signal() noexcept {
     return tree_entered_;
 }

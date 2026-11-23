@@ -23,6 +23,14 @@ public:
         Exiting
     };
 
+    enum class ProcessMode {
+        Inherit,
+        Pausable,
+        WhenPaused,
+        Always,
+        Disabled
+    };
+
     explicit Node(std::string name = "Node");
     ~Node() override;
 
@@ -46,6 +54,8 @@ public:
     [[nodiscard]] bool is_process_enabled() const noexcept;
     void set_process_priority(std::int32_t priority) noexcept;
     [[nodiscard]] std::int32_t get_process_priority() const noexcept;
+    void set_process_mode(ProcessMode mode) noexcept;
+    [[nodiscard]] ProcessMode get_process_mode() const noexcept;
 
     [[nodiscard]] Signal<>& tree_entered_signal() noexcept;
     [[nodiscard]] Signal<>& ready_signal() noexcept;
@@ -78,6 +88,7 @@ private:
     TreeState tree_state_ = TreeState::Outside;
     bool process_enabled_ = true;
     std::int32_t process_priority_ = 0;
+    ProcessMode process_mode_ = ProcessMode::Inherit;
 
     Signal<> tree_entered_;
     Signal<> ready_;

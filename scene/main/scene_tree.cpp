@@ -45,7 +45,8 @@ void SceneTree::process_frame(const double delta) {
         const std::vector<ObjectID> order = get_processing_order();
         for (const ObjectID id : order) {
             auto* node = dynamic_cast<Node*>(ObjectDB::get_instance(id));
-            if (node != nullptr && node->is_inside_tree() && node->process_enabled_) {
+            if (node != nullptr && node->is_inside_tree() && node->process_enabled_ &&
+                can_process_node(*node)) {
                 node->_process(delta);
             }
         }
@@ -64,6 +65,14 @@ void SceneTree::physics_frame(const double delta) {
         }
         flush_deferred_deletions();
     }
+}
+
+void SceneTree::set_paused(const bool paused) noexcept {
+    paused_ = paused;
+}
+
+bool SceneTree::is_paused() const noexcept {
+    return paused_;
 }
 
 void SceneTree::shutdown() {
@@ -109,6 +118,26 @@ std::size_t SceneTree::get_queued_deletion_count() const noexcept {
 
 bool SceneTree::is_initialized() const noexcept {
     return initialized_;
+}
+
+bool SceneTree::can_process_node(const Node& node) const noexcept {
+    for (const Node* current = &node; current != nullptr; current = current->parent_) {
+        switch (current->process_mode_) {
+            case Node::ProcessMode::Inherit:
+                continue;
+            case Node::ProcessMode::Pausable:
+                return !paused_;
+            case Node::ProcessMode::WhenPaused:
+                return paused_;
+            case Node::ProcessMode::Always:
+                return true;
+            case Node::ProcessMode::Disabled:
+            default:
+                return false;
+        }
+    }
+
+    return !paused_;
 }
 
 std::vector<ObjectID> SceneTree::get_processing_order() const {

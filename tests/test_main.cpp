@@ -841,6 +841,54 @@ void test_scene_tree() {
     expect(!tree.is_initialized(), "scene tree reports shutdown");
 }
 
+void test_scene_tree_pause_modes() {
+    std::vector<std::string> events;
+    auto root = std::make_unique<LifecycleNode>("Root", events);
+    auto always = std::make_unique<LifecycleNode>("Always", events);
+    auto paused_only = std::make_unique<LifecycleNode>("PausedOnly", events);
+    auto disabled = std::make_unique<LifecycleNode>("Disabled", events);
+
+    always->set_process_mode(nle::Node::ProcessMode::Always);
+    paused_only->set_process_mode(nle::Node::ProcessMode::WhenPaused);
+    disabled->set_process_mode(nle::Node::ProcessMode::Disabled);
+    expect(root->add_child(std::move(always)) != nullptr,
+           "pause test attaches always-processing node");
+    expect(root->add_child(std::move(paused_only)) != nullptr,
+           "pause test attaches paused-only node");
+    expect(root->add_child(std::move(disabled)) != nullptr,
+           "pause test attaches disabled node");
+
+    nle::SceneTree tree;
+    expect(tree.set_root(std::move(root)), "pause test sets scene root");
+    expect(tree.initialize(), "pause test initializes scene tree");
+
+    events.clear();
+    tree.process_frame(1.0 / 60.0);
+    expect(events == std::vector<std::string>{"Root.process", "Always.process"},
+           "unpaused tree runs pausable and always nodes only");
+
+    events.clear();
+    tree.set_paused(true);
+    expect(tree.is_paused(), "scene tree reports paused state");
+    tree.process_frame(1.0 / 60.0);
+    expect(events == std::vector<std::string>{"Always.process", "PausedOnly.process"},
+           "paused tree runs always and when-paused nodes only");
+
+    events.clear();
+    tree.physics_frame(1.0 / 60.0);
+    expect(events == std::vector<std::string>{"Always.physics", "PausedOnly.physics"},
+           "pause modes also govern physics callbacks");
+
+    events.clear();
+    tree.set_paused(false);
+    expect(!tree.is_paused(), "scene tree resumes processing");
+    tree.process_frame(1.0 / 60.0);
+    expect(events == std::vector<std::string>{"Root.process", "Always.process"},
+           "resumed tree restores pausable processing");
+
+    tree.shutdown();
+}
+
 void test_deferred_node_deletion() {
     std::vector<std::string> events;
     auto root = std::make_unique<LifecycleNode>("Root", events);
@@ -1675,6 +1723,7 @@ int main() {
     test_rendering_device();
     test_spatial_nodes();
     test_scene_tree();
+    test_scene_tree_pause_modes();
     test_deferred_node_deletion();
     test_self_deferred_node_deletion();
     test_main_loop();
