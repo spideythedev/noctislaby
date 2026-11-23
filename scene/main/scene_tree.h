@@ -44,7 +44,7 @@ public:
 
 private:
     struct DeferredCall {
-        ObjectID target = 0;
+        ObjectID target{};
         std::function<void(Node&)> callback;
     };
 
