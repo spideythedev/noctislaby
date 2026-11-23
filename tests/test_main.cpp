@@ -811,6 +811,38 @@ void test_scene_tree() {
     expect(!tree.is_initialized(), "scene tree reports shutdown");
 }
 
+void test_deferred_node_deletion() {
+    std::vector<std::string> events;
+    auto root = std::make_unique<LifecycleNode>("Root", events);
+    auto child = std::make_unique<LifecycleNode>("Child", events);
+    LifecycleNode* child_pointer = child.get();
+    expect(root->add_child(std::move(child)) == child_pointer,
+           "deferred deletion test attaches child");
+
+    nle::SceneTree tree;
+    expect(tree.set_root(std::move(root)), "deferred deletion test sets root");
+    expect(tree.initialize(), "deferred deletion test initializes tree");
+    expect(!tree.queue_free(tree.get_root()), "scene tree refuses to queue its root");
+    expect(!tree.queue_free(nullptr), "scene tree refuses a null deletion target");
+    expect(tree.queue_free(child_pointer), "scene tree queues an in-tree child");
+    expect(!tree.queue_free(child_pointer), "scene tree rejects duplicate deletion requests");
+    expect(tree.get_queued_deletion_count() == 1,
+           "scene tree tracks deferred deletion requests");
+
+    events.clear();
+    tree.process_frame(1.0 / 60.0);
+    expect(events == std::vector<std::string>{"Root.process"},
+           "queued child remains alive only until frame deletion flush");
+    expect(tree.get_root()->get_child_count() == 0,
+           "scene tree removes queued child after frame processing");
+    expect(tree.get_queued_deletion_count() == 0,
+           "scene tree clears completed deletion requests");
+    expect(!nle::ObjectDB::instance_exists(child_pointer->get_instance_id()),
+           "deleted child is removed from object registry");
+
+    tree.shutdown();
+}
+
 void test_error_codes() {
     using nle::ErrorCode;
 
@@ -1592,6 +1624,7 @@ int main() {
     test_rendering_device();
     test_spatial_nodes();
     test_scene_tree();
+    test_deferred_node_deletion();
     test_main_loop();
     test_error_codes();
     test_class_db();

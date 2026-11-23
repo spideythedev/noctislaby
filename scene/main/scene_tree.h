@@ -3,6 +3,7 @@
 #include "node.h"
 
 #include <memory>
+#include <vector>
 
 namespace nle {
 
@@ -22,10 +23,15 @@ public:
     void physics_frame(double delta);
     void shutdown();
 
+    [[nodiscard]] bool queue_free(Node* node);
+    [[nodiscard]] std::size_t get_queued_deletion_count() const noexcept;
     [[nodiscard]] bool is_initialized() const noexcept;
 
 private:
+    void flush_deferred_deletions();
+
     std::unique_ptr<Node> root_;
+    std::vector<ObjectID> deletion_queue_;
     bool initialized_ = false;
 };
 
