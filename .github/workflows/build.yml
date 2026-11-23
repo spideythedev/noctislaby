@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: noctislaby-build-${{ github.ref }}
-  cancel-in-progress: true
+  group: noctislaby-build-${{ github.run_id }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
