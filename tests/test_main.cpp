@@ -816,6 +816,7 @@ void test_deferred_node_deletion() {
     auto root = std::make_unique<LifecycleNode>("Root", events);
     auto child = std::make_unique<LifecycleNode>("Child", events);
     LifecycleNode* child_pointer = child.get();
+    const nle::ObjectID child_id = child_pointer->get_instance_id();
     expect(root->add_child(std::move(child)) == child_pointer,
            "deferred deletion test attaches child");
 
@@ -837,7 +838,7 @@ void test_deferred_node_deletion() {
            "scene tree removes queued child after frame processing");
     expect(tree.get_queued_deletion_count() == 0,
            "scene tree clears completed deletion requests");
-    expect(!nle::ObjectDB::instance_exists(child_pointer->get_instance_id()),
+    expect(!nle::ObjectDB::instance_exists(child_id),
            "deleted child is removed from object registry");
 
     tree.shutdown();
