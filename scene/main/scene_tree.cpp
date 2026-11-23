@@ -50,6 +50,7 @@ void SceneTree::process_frame(const double delta) {
                 node->_process(delta);
             }
         }
+        flush_deferred_calls();
         flush_deferred_deletions();
     }
 }
@@ -64,6 +65,7 @@ void SceneTree::physics_frame(const double delta) {
                 node->_physics_process(delta);
             }
         }
+        flush_deferred_calls();
         flush_deferred_deletions();
     }
 }
@@ -78,6 +80,7 @@ bool SceneTree::is_paused() const noexcept {
 
 void SceneTree::shutdown() {
     deletion_queue_.clear();
+    deferred_calls_.clear();
     if (!initialized_) {
         return;
     }
@@ -130,6 +133,30 @@ std::size_t SceneTree::call_group(
         ++called;
     }
     return called;
+}
+
+bool SceneTree::call_deferred(
+    Node* node,
+    std::function<void(Node&)> callback
+) {
+    if (!initialized_ || node == nullptr || !callback || !node->is_inside_tree()) {
+        return false;
+    }
+
+    Node* ancestor = node;
+    while (ancestor != nullptr && ancestor != root_.get()) {
+        ancestor = ancestor->get_parent();
+    }
+    if (ancestor != root_.get()) {
+        return false;
+    }
+
+    deferred_calls_.push_back({node->get_instance_id(), std::move(callback)});
+    return true;
+}
+
+std::size_t SceneTree::get_deferred_call_count() const noexcept {
+    return deferred_calls_.size();
 }
 
 bool SceneTree::queue_free(Node* node) {
@@ -216,6 +243,20 @@ std::vector<ObjectID> SceneTree::get_processing_order() const {
         return left_node->get_process_priority() < right_node->get_process_priority();
     });
     return order;
+}
+
+void SceneTree::flush_deferred_calls() {
+    std::vector<DeferredCall> pending;
+    pending.swap(deferred_calls_);
+
+    for (DeferredCall& call : pending) {
+        Node* node = Node::resolve_node(call.target);
+        if (node == nullptr || !node->is_inside_tree()) {
+            continue;
+        }
+
+        call.callback(*node);
+    }
 }
 
 void SceneTree::flush_deferred_deletions() {

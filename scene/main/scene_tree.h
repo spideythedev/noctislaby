@@ -32,18 +32,30 @@ public:
         std::string_view group,
         const std::function<void(Node&)>& callback
     ) const;
+    [[nodiscard]] bool call_deferred(
+        Node* node,
+        std::function<void(Node&)> callback
+    );
+    [[nodiscard]] std::size_t get_deferred_call_count() const noexcept;
 
     [[nodiscard]] bool queue_free(Node* node);
     [[nodiscard]] std::size_t get_queued_deletion_count() const noexcept;
     [[nodiscard]] bool is_initialized() const noexcept;
 
 private:
+    struct DeferredCall {
+        ObjectID target = 0;
+        std::function<void(Node&)> callback;
+    };
+
+    void flush_deferred_calls();
     void flush_deferred_deletions();
     [[nodiscard]] std::vector<ObjectID> get_processing_order() const;
     [[nodiscard]] bool can_process_node(const Node& node) const noexcept;
 
     std::unique_ptr<Node> root_;
     std::vector<ObjectID> deletion_queue_;
+    std::vector<DeferredCall> deferred_calls_;
     bool initialized_ = false;
     bool paused_ = false;
 };

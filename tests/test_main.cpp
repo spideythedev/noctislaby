@@ -841,6 +841,57 @@ void test_scene_tree() {
     expect(!tree.is_initialized(), "scene tree reports shutdown");
 }
 
+void test_scene_tree_deferred_calls() {
+    std::vector<std::string> events;
+    auto root = std::make_unique<LifecycleNode>("Root", events);
+    auto target = std::make_unique<LifecycleNode>("Target", events);
+    LifecycleNode* target_ptr = target.get();
+    expect(root->add_child(std::move(target)) != nullptr,
+           "deferred-call test attaches target");
+
+    nle::SceneTree tree;
+    expect(tree.set_root(std::move(root)), "deferred-call test sets root");
+    expect(tree.initialize(), "deferred-call test initializes tree");
+    events.clear();
+
+    int calls = 0;
+    expect(!tree.call_deferred(nullptr, [&calls](nle::Node&) { ++calls; }),
+           "deferred call rejects null target");
+    expect(!tree.call_deferred(target_ptr, {}),
+           "deferred call rejects empty callback");
+    expect(tree.call_deferred(target_ptr, [&calls](nle::Node& node) {
+        ++calls;
+        expect(node.get_name() == "Target", "deferred callback receives its target");
+    }), "deferred call queues valid callback");
+    expect(tree.get_deferred_call_count() == 1,
+           "deferred call queue reports pending work");
+    expect(calls == 0, "deferred callback does not run immediately");
+
+    expect(tree.call_deferred(target_ptr, [&tree = tree, target_ptr](nle::Node&) {
+        static_cast<void>(tree.call_deferred(target_ptr, [](nle::Node&) {}));
+    }), "deferred callback can schedule subsequent deferred work");
+    expect(tree.get_deferred_call_count() == 2,
+           "deferred queue tracks both callbacks");
+
+    tree.process_frame(1.0 / 60.0);
+    expect(calls == 1, "frame flush executes deferred callback");
+    expect(tree.get_deferred_call_count() == 1,
+           "callbacks queued during flush wait until the next frame");
+
+    tree.process_frame(1.0 / 60.0);
+    expect(tree.get_deferred_call_count() == 0,
+           "next frame executes newly deferred callback");
+
+    expect(tree.call_deferred(target_ptr, [&tree](nle::Node& node) {
+        static_cast<void>(tree.queue_free(&node));
+    }), "deferred callback can queue its target for deletion");
+    tree.process_frame(1.0 / 60.0);
+    expect(tree.get_root()->get_child_count() == 0,
+           "deferred callback deletion is flushed safely after callback");
+
+    tree.shutdown();
+}
+
 void test_scene_tree_groups() {
     std::vector<std::string> events;
     auto root = std::make_unique<LifecycleNode>("Root", events);
@@ -1776,6 +1827,7 @@ int main() {
     test_scene_tree();
     test_scene_tree_pause_modes();
     test_scene_tree_groups();
+    test_scene_tree_deferred_calls();
     test_deferred_node_deletion();
     test_self_deferred_node_deletion();
     test_main_loop();
