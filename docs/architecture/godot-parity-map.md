@@ -31,7 +31,7 @@ Upstream files reviewed as architectural references include:
 | Godot source area | NoctisLaby target | Current state |
 | --- | --- | --- |
 | `scene/main/node.h/.cpp` | `scene/main/node.*` | Owned child hierarchy, names, paths, lifecycle and callbacks implemented |
-| `scene/main/scene_tree.h/.cpp` | `scene/main/scene_tree.*` | Root management, enter/ready/exit, process and physics frame dispatch implemented |
+| `scene/main/scene_tree.h/.cpp` | `scene/main/scene_tree.*` | Root management, enter/ready/exit, process and physics dispatch, deferred deletion and stale-ID validation implemented; process priorities and pause modes remain |
 | 2D/3D spatial nodes | `scene/2d/node_2d.*`, `scene/3d/node_3d.*` | Local and hierarchical transforms implemented |
 
 ## Not yet mapped to implementation
