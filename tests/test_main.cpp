@@ -108,6 +108,24 @@ private:
     std::vector<std::string>& events_;
 };
 
+class DeferredDeleteNode final : public nle::Node {
+public:
+    explicit DeferredDeleteNode(nle::SceneTree& tree)
+        : Node("DeferredDelete"), tree_(tree) {}
+
+    bool queued = false;
+
+protected:
+    void _process(const double) override {
+        if (!queued) {
+            queued = tree_.queue_free(this);
+        }
+    }
+
+private:
+    nle::SceneTree& tree_;
+};
+
 class TestFormatSaver final : public nle::ResourceFormatSaver {
 public:
     [[nodiscard]] std::vector<std::string> get_recognized_extensions() const override {
@@ -841,6 +859,25 @@ void test_deferred_node_deletion() {
     expect(!nle::ObjectDB::instance_exists(child_id),
            "deleted child is removed from object registry");
 
+    tree.shutdown();
+}
+
+void test_self_deferred_node_deletion() {
+    nle::SceneTree tree;
+    auto root = std::make_unique<nle::Node>("Root");
+    auto child = std::make_unique<DeferredDeleteNode>(tree);
+    DeferredDeleteNode* child_pointer = child.get();
+    const nle::ObjectID child_id = child_pointer->get_instance_id();
+    expect(root->add_child(std::move(child)) == child_pointer,
+           "self-deletion test attaches child");
+    expect(tree.set_root(std::move(root)), "self-deletion test sets root");
+    expect(tree.initialize(), "self-deletion test initializes tree");
+
+    tree.process_frame(1.0 / 60.0);
+    expect(!nle::ObjectDB::instance_exists(child_id),
+           "node can queue its own deletion safely during process callback");
+    expect(tree.get_root()->get_child_count() == 0,
+           "self-queued node is removed after traversal completes");
     tree.shutdown();
 }
 
@@ -1626,6 +1663,7 @@ int main() {
     test_spatial_nodes();
     test_scene_tree();
     test_deferred_node_deletion();
+    test_self_deferred_node_deletion();
     test_main_loop();
     test_error_codes();
     test_class_db();
