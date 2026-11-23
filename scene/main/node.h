@@ -56,6 +56,9 @@ public:
     [[nodiscard]] std::int32_t get_process_priority() const noexcept;
     void set_process_mode(ProcessMode mode) noexcept;
     [[nodiscard]] ProcessMode get_process_mode() const noexcept;
+    [[nodiscard]] bool add_to_group(std::string group);
+    [[nodiscard]] bool remove_from_group(std::string_view group);
+    [[nodiscard]] bool is_in_group(std::string_view group) const noexcept;
 
     [[nodiscard]] Signal<>& tree_entered_signal() noexcept;
     [[nodiscard]] Signal<>& ready_signal() noexcept;
@@ -89,6 +92,7 @@ private:
     bool process_enabled_ = true;
     std::int32_t process_priority_ = 0;
     ProcessMode process_mode_ = ProcessMode::Inherit;
+    std::vector<std::string> groups_;
 
     Signal<> tree_entered_;
     Signal<> ready_;

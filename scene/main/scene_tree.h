@@ -2,7 +2,9 @@
 
 #include "node.h"
 
+#include <functional>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 namespace nle {
@@ -24,6 +26,12 @@ public:
     void set_paused(bool paused) noexcept;
     [[nodiscard]] bool is_paused() const noexcept;
     void shutdown();
+
+    [[nodiscard]] std::vector<Node*> get_nodes_in_group(std::string_view group) const;
+    [[nodiscard]] std::size_t call_group(
+        std::string_view group,
+        const std::function<void(Node&)>& callback
+    ) const;
 
     [[nodiscard]] bool queue_free(Node* node);
     [[nodiscard]] std::size_t get_queued_deletion_count() const noexcept;

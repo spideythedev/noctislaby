@@ -89,6 +89,49 @@ void SceneTree::shutdown() {
     initialized_ = false;
 }
 
+std::vector<Node*> SceneTree::get_nodes_in_group(const std::string_view group) const {
+    std::vector<Node*> matches;
+    if (!initialized_ || root_ == nullptr || group.empty()) {
+        return matches;
+    }
+
+    const std::vector<ObjectID> order = get_processing_order();
+    matches.reserve(order.size());
+    for (const ObjectID id : order) {
+        Node* node = Node::resolve_node(id);
+        if (node != nullptr && node->is_inside_tree() && node->is_in_group(group)) {
+            matches.push_back(node);
+        }
+    }
+    return matches;
+}
+
+std::size_t SceneTree::call_group(
+    const std::string_view group,
+    const std::function<void(Node&)>& callback
+) const {
+    if (!callback || group.empty() || !initialized_ || root_ == nullptr) {
+        return 0;
+    }
+
+    std::vector<ObjectID> snapshot;
+    for (Node* node : get_nodes_in_group(group)) {
+        snapshot.push_back(node->get_instance_id());
+    }
+
+    std::size_t called = 0;
+    for (const ObjectID id : snapshot) {
+        Node* node = Node::resolve_node(id);
+        if (node == nullptr || !node->is_inside_tree() || !node->is_in_group(group)) {
+            continue;
+        }
+
+        callback(*node);
+        ++called;
+    }
+    return called;
+}
+
 bool SceneTree::queue_free(Node* node) {
     if (!initialized_ || node == nullptr || node == root_.get() ||
         !node->is_inside_tree() || node->get_parent() == nullptr) {

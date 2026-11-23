@@ -841,6 +841,57 @@ void test_scene_tree() {
     expect(!tree.is_initialized(), "scene tree reports shutdown");
 }
 
+void test_scene_tree_groups() {
+    std::vector<std::string> events;
+    auto root = std::make_unique<LifecycleNode>("Root", events);
+    auto first = std::make_unique<LifecycleNode>("First", events);
+    auto second = std::make_unique<LifecycleNode>("Second", events);
+    auto outsider = std::make_unique<LifecycleNode>("Outsider", events);
+
+    LifecycleNode* first_ptr = first.get();
+    LifecycleNode* second_ptr = second.get();
+    LifecycleNode* outsider_ptr = outsider.get();
+    expect(first_ptr->add_to_group("enemies"), "group accepts first member");
+    expect(second_ptr->add_to_group("enemies"), "group accepts second member");
+    expect(outsider_ptr->add_to_group("friends"), "group accepts independent member");
+    expect(!first_ptr->add_to_group("enemies"), "group rejects duplicate membership");
+    expect(!first_ptr->add_to_group(""), "group rejects empty names");
+
+    expect(root->add_child(std::move(first)) != nullptr, "group test attaches first node");
+    expect(root->add_child(std::move(second)) != nullptr, "group test attaches second node");
+    expect(root->add_child(std::move(outsider)) != nullptr, "group test attaches outsider");
+
+    nle::SceneTree tree;
+    expect(tree.set_root(std::move(root)), "group test sets scene root");
+    expect(tree.initialize(), "group test initializes scene tree");
+    expect(tree.get_nodes_in_group("enemies").size() == 2,
+           "scene tree finds every active group member");
+    expect(tree.get_nodes_in_group("missing").empty(),
+           "scene tree returns empty result for unknown group");
+
+    std::vector<std::string> called;
+    const std::size_t count = tree.call_group("enemies", [&called](nle::Node& node) {
+        called.emplace_back(node.get_name());
+    });
+    expect(count == 2 && called == std::vector<std::string>{"First", "Second"},
+           "group callbacks follow stable scene traversal order");
+
+    const std::size_t modified_count = tree.call_group("enemies", [first_ptr](nle::Node& node) {
+        if (&node == first_ptr) {
+            static_cast<void>(first_ptr->remove_from_group("enemies"));
+        }
+    });
+    expect(modified_count == 2,
+           "group iteration uses a stable membership snapshot");
+    expect(tree.get_nodes_in_group("enemies").size() == 1 &&
+           tree.get_nodes_in_group("enemies").front() == second_ptr,
+           "group mutation is reflected in later queries");
+    expect(!first_ptr->remove_from_group("enemies"),
+           "group rejects removing absent membership");
+
+    tree.shutdown();
+}
+
 void test_scene_tree_pause_modes() {
     std::vector<std::string> events;
     auto root = std::make_unique<LifecycleNode>("Root", events);
@@ -1724,6 +1775,7 @@ int main() {
     test_spatial_nodes();
     test_scene_tree();
     test_scene_tree_pause_modes();
+    test_scene_tree_groups();
     test_deferred_node_deletion();
     test_self_deferred_node_deletion();
     test_main_loop();

@@ -152,6 +152,33 @@ Node::ProcessMode Node::get_process_mode() const noexcept {
     return process_mode_;
 }
 
+bool Node::add_to_group(std::string group) {
+    if (group.empty()) {
+        return false;
+    }
+
+    if (is_in_group(group)) {
+        return false;
+    }
+
+    groups_.push_back(std::move(group));
+    return true;
+}
+
+bool Node::remove_from_group(const std::string_view group) {
+    const auto found = std::find(groups_.begin(), groups_.end(), group);
+    if (found == groups_.end()) {
+        return false;
+    }
+
+    groups_.erase(found);
+    return true;
+}
+
+bool Node::is_in_group(const std::string_view group) const noexcept {
+    return std::find(groups_.begin(), groups_.end(), group) != groups_.end();
+}
+
 Signal<>& Node::tree_entered_signal() noexcept {
     return tree_entered_;
 }
