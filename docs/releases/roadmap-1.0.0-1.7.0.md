@@ -10,21 +10,27 @@ NLE follows capability-based releases. A version is published only when its acce
 - [ ] Stable object ownership, weak references and lifetime-safe object access.
 - [ ] Reflection metadata for methods, properties, signals and enums.
 - [ ] Expanded Variant and conversion/operator coverage.
-- [x] Persistent versioned resource UID registry with integrity checks.\n- [ ] Canonical resource paths, project-wide UID remapping and versioned resource serialization.
+- [x] Persistent versioned resource UID registry with integrity checks.
+- [ ] Canonical resource paths, project-wide UID remapping and versioned resource serialization.
 - [ ] Async resource loading, dependency tracking and cache policies.
-- [x] Deterministic `.nleproject` configuration parser/writer with transactional load.\n- [x] Project directory creation/opening, descriptor validation and version checks.\n- [ ] Reproducible sample project format and end-to-end launch workflow.
+- [x] Deterministic `.nleproject` configuration parser/writer with transactional load.
+- [x] Project directory creation/opening, descriptor validation and version checks.
+- [ ] Reproducible sample project format and end-to-end launch workflow.
 
 ### Scene and runtime
-- [x] Fixed-timestep MainLoop with bounded catch-up, frame clamping and time scaling.\n- [ ] Platform event loop, high-resolution clock and frame pacing.
+- [x] Fixed-timestep MainLoop with bounded catch-up, frame clamping and time scaling.
+- [ ] Platform event loop, high-resolution clock and frame pacing.
 - [x] Deferred deletion with post-traversal flushing and stale-object validation.
 - [x] Process priorities and inherited pause handling.
-- [x] Thread-safe input event queue and frame-scoped digital input state.\n- [ ] Platform input drivers, event pumping and configurable action maps.
+- [x] Thread-safe input event queue and frame-scoped digital input state.
+- [ ] Platform input drivers, event pumping and configurable action maps.
 - [ ] Scene/resource serialization and packed scene instantiation.
 - [ ] Tested 2D and 3D scene lifecycle and transform behavior.
 
 ### Rendering
 - [ ] Hardware backend with tested 2D and 3D rendering.
-- [x] Texture resource descriptions, formats, usage flags and null-backend storage/readback.\n- [ ] Hardware textures, samplers, shaders, pipelines, render targets and swapchain.
+- [x] Texture resource descriptions, formats, usage flags and null-backend storage/readback.
+- [ ] Hardware textures, samplers, shaders, pipelines, render targets and swapchain.
 - [ ] Command buffers, submission, fences and resource lifetime rules.
 - [ ] Render graph integration with backend resource transitions.
 
@@ -37,7 +43,9 @@ NLE follows capability-based releases. A version is published only when its acce
 
 ## 1.7.0-stable — expanded production engine
 
-- [x] Initial 2D static/dynamic AABB solver with gravity and collision response.\n- [ ] Production 2D physics with spatial broadphase, shapes, joints and continuous collision detection.\n- [ ] 3D physics with selectable production backends.
+- [x] Initial 2D static/dynamic AABB solver with gravity and collision response.
+- [ ] Production 2D physics with spatial broadphase, shapes, joints and continuous collision detection.
+- [ ] 3D physics with selectable production backends.
 - [ ] Audio mixer, buses, effects, streaming and platform drivers.
 - [ ] Input and display servers with platform implementations.
 - [ ] Animation, navigation, networking and text systems.
