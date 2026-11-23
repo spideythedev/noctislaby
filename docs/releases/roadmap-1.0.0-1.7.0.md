@@ -16,7 +16,9 @@ NLE follows capability-based releases. A version is published only when its acce
 
 ### Scene and runtime
 - [x] Fixed-timestep MainLoop with bounded catch-up, frame clamping and time scaling.\n- [ ] Platform event loop, high-resolution clock and frame pacing.
-- [ ] Deferred deletion, process priorities and pause handling.\n- [x] Thread-safe input event queue and frame-scoped digital input state.\n- [ ] Platform input drivers, event pumping and configurable action maps.
+- [x] Deferred deletion with post-traversal flushing and stale-object validation.
+- [ ] Process priorities and pause handling.
+- [x] Thread-safe input event queue and frame-scoped digital input state.\n- [ ] Platform input drivers, event pumping and configurable action maps.
 - [ ] Scene/resource serialization and packed scene instantiation.
 - [ ] Tested 2D and 3D scene lifecycle and transform behavior.
 
