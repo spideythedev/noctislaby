@@ -35,7 +35,8 @@
 #include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
 #include "scene/main/main_loop.h"
-#include "scene/main/scene_tree.h"\n#include "scene/main/timer.h"
+#include "scene/main/scene_tree.h"
+#include "scene/main/timer.h"
 #include "string/string_name.h"
 #include "variant/variant.h"
 #include "variant/variant_serializer.h"
@@ -1876,7 +1877,8 @@ int main() {
     test_spatial_nodes();
     test_scene_tree();
     test_scene_tree_pause_modes();
-    test_scene_timer();\n    test_scene_tree_groups();
+    test_scene_timer();
+    test_scene_tree_groups();
     test_scene_tree_deferred_calls();
     test_deferred_node_deletion();
     test_self_deferred_node_deletion();
