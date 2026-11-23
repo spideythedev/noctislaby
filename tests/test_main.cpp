@@ -946,7 +946,6 @@ void test_scene_timer() {
 void test_scene_tree_scene_change() {
     std::vector<std::string> events;
     auto first = std::make_unique<LifecycleNode>("First", events);
-    LifecycleNode* first_ptr = first.get();
     nle::SceneTree tree;
     expect(tree.set_root(std::move(first)), "scene-change test sets initial root");
     expect(tree.initialize(), "scene-change test initializes");
@@ -961,7 +960,7 @@ void test_scene_tree_scene_change() {
     tree.process_frame(1.0 / 60.0);
     expect(tree.get_root() == second_ptr, "frame boundary installs replacement scene");
     expect(!tree.has_pending_scene_change(), "scene change clears pending state");
-    expect(first_ptr->get_tree_state() == nle::Node::TreeState::Outside,
+    expect(std::find(events.begin(), events.end(), "First.exit") != events.end(),
            "previous scene exits before replacement");
     expect(second_ptr->get_tree_state() == nle::Node::TreeState::Inside,
            "replacement scene enters tree and becomes ready");
