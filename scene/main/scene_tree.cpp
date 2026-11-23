@@ -21,8 +21,23 @@ bool SceneTree::set_root(std::unique_ptr<Node> root) {
     }
 
     root_ = std::move(root);
+    pending_scene_.reset();
     deletion_queue_.clear();
     return true;
+}
+
+bool SceneTree::change_scene(std::unique_ptr<Node> scene) {
+    if (!initialized_ || scene == nullptr || scene->get_parent() != nullptr ||
+        scene->is_inside_tree() || pending_scene_ != nullptr) {
+        return false;
+    }
+
+    pending_scene_ = std::move(scene);
+    return true;
+}
+
+bool SceneTree::has_pending_scene_change() const noexcept {
+    return pending_scene_ != nullptr;
 }
 
 Node* SceneTree::get_root() const noexcept {
@@ -52,6 +67,7 @@ void SceneTree::process_frame(const double delta) {
         }
         flush_deferred_calls();
         flush_deferred_deletions();
+        apply_pending_scene_change();
     }
 }
 
@@ -67,6 +83,7 @@ void SceneTree::physics_frame(const double delta) {
         }
         flush_deferred_calls();
         flush_deferred_deletions();
+        apply_pending_scene_change();
     }
 }
 
@@ -81,6 +98,7 @@ bool SceneTree::is_paused() const noexcept {
 void SceneTree::shutdown() {
     deletion_queue_.clear();
     deferred_calls_.clear();
+    pending_scene_.reset();
     if (!initialized_) {
         return;
     }
@@ -257,6 +275,23 @@ void SceneTree::flush_deferred_calls() {
 
         call.callback(*node);
     }
+}
+
+void SceneTree::apply_pending_scene_change() {
+    if (!initialized_ || pending_scene_ == nullptr) {
+        return;
+    }
+
+    std::unique_ptr<Node> next_scene = std::move(pending_scene_);
+    if (root_ != nullptr) {
+        root_->exit_tree_recursive();
+    }
+
+    root_ = std::move(next_scene);
+    deletion_queue_.clear();
+    deferred_calls_.clear();
+    root_->enter_tree_recursive();
+    root_->ready_recursive();
 }
 
 void SceneTree::flush_deferred_deletions() {

@@ -943,6 +943,39 @@ void test_scene_timer() {
     tree.shutdown();
 }
 
+void test_scene_tree_scene_change() {
+    std::vector<std::string> events;
+    auto first = std::make_unique<LifecycleNode>("First", events);
+    LifecycleNode* first_ptr = first.get();
+    nle::SceneTree tree;
+    expect(tree.set_root(std::move(first)), "scene-change test sets initial root");
+    expect(tree.initialize(), "scene-change test initializes");
+    events.clear();
+
+    auto second = std::make_unique<LifecycleNode>("Second", events);
+    LifecycleNode* second_ptr = second.get();
+    expect(tree.change_scene(std::move(second)), "scene change queues a valid scene");
+    expect(tree.has_pending_scene_change(), "scene change reports pending state");
+    expect(tree.get_root() == first_ptr, "current scene remains active until frame boundary");
+
+    tree.process_frame(1.0 / 60.0);
+    expect(tree.get_root() == second_ptr, "frame boundary installs replacement scene");
+    expect(!tree.has_pending_scene_change(), "scene change clears pending state");
+    expect(first_ptr->get_tree_state() == nle::Node::TreeState::Outside,
+           "previous scene exits before replacement");
+    expect(second_ptr->get_tree_state() == nle::Node::TreeState::Inside,
+           "replacement scene enters tree and becomes ready");
+
+    auto third = std::make_unique<LifecycleNode>("Third", events);
+    expect(tree.change_scene(std::move(third)), "second scene change can be queued");
+    tree.physics_frame(1.0 / 60.0);
+    expect(tree.get_root()->get_name() == "Third",
+           "physics boundary also applies queued scene changes");
+
+    expect(!tree.change_scene(nullptr), "scene change rejects null scene");
+    tree.shutdown();
+}
+
 void test_scene_tree_groups() {
     std::vector<std::string> events;
     auto root = std::make_unique<LifecycleNode>("Root", events);
@@ -1879,6 +1912,7 @@ int main() {
     test_scene_tree_pause_modes();
     test_scene_timer();
     test_scene_tree_groups();
+    test_scene_tree_scene_change();
     test_scene_tree_deferred_calls();
     test_deferred_node_deletion();
     test_self_deferred_node_deletion();

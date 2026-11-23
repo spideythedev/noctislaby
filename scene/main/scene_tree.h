@@ -18,6 +18,8 @@ public:
     SceneTree& operator=(const SceneTree&) = delete;
 
     [[nodiscard]] bool set_root(std::unique_ptr<Node> root);
+    [[nodiscard]] bool change_scene(std::unique_ptr<Node> scene);
+    [[nodiscard]] bool has_pending_scene_change() const noexcept;
     [[nodiscard]] Node* get_root() const noexcept;
 
     [[nodiscard]] bool initialize();
@@ -49,11 +51,13 @@ private:
     };
 
     void flush_deferred_calls();
+    void apply_pending_scene_change();
     void flush_deferred_deletions();
     [[nodiscard]] std::vector<ObjectID> get_processing_order() const;
     [[nodiscard]] bool can_process_node(const Node& node) const noexcept;
 
     std::unique_ptr<Node> root_;
+    std::unique_ptr<Node> pending_scene_;
     std::vector<ObjectID> deletion_queue_;
     std::vector<DeferredCall> deferred_calls_;
     bool initialized_ = false;
