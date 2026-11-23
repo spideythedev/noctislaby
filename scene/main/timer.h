@@ -40,7 +40,7 @@ protected:
     void _physics_process(double delta) override;
 
 private:
-    void tick(double delta) noexcept;
+    void tick(double delta);
 
     double wait_time_ = 1.0;
     double time_left_ = 0.0;

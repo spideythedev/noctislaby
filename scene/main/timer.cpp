@@ -95,7 +95,7 @@ void Timer::_physics_process(const double delta) {
     }
 }
 
-void Timer::tick(const double delta) noexcept {
+void Timer::tick(const double delta) {
     if (!running_ || !std::isfinite(delta) || delta < 0.0) {
         return;
     }
