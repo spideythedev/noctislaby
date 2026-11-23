@@ -4,6 +4,7 @@ add_library(nle_scene STATIC
     main/main_loop.cpp
     main/node.cpp
     main/scene_tree.cpp
+    main/timer.cpp
 )
 
 target_include_directories(nle_scene
