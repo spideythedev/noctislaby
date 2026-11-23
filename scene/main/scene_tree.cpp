@@ -46,7 +46,6 @@ void SceneTree::process_frame(const double delta) {
         for (const ObjectID id : order) {
             auto* node = dynamic_cast<Node*>(ObjectDB::get_instance(id));
             if (node != nullptr && node->is_inside_tree() && node->process_enabled_ &&
-                can_process_node(*node) &&
                 can_process_node(*node)) {
                 node->_process(delta);
             }
@@ -60,7 +59,8 @@ void SceneTree::physics_frame(const double delta) {
         const std::vector<ObjectID> order = get_processing_order();
         for (const ObjectID id : order) {
             auto* node = dynamic_cast<Node*>(ObjectDB::get_instance(id));
-            if (node != nullptr && node->is_inside_tree() && node->process_enabled_) {
+            if (node != nullptr && node->is_inside_tree() && node->process_enabled_ &&
+                can_process_node(*node)) {
                 node->_physics_process(delta);
             }
         }
