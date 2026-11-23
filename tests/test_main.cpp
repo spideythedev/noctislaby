@@ -35,7 +35,7 @@
 #include "scene/3d/node_3d.h"
 #include "scene/main/node.h"
 #include "scene/main/main_loop.h"
-#include "scene/main/scene_tree.h"
+#include "scene/main/scene_tree.h"\n#include "scene/main/timer.h"
 #include "string/string_name.h"
 #include "variant/variant.h"
 #include "variant/variant_serializer.h"
@@ -889,6 +889,56 @@ void test_scene_tree_deferred_calls() {
     expect(tree.get_root()->get_child_count() == 0,
            "deferred callback deletion is flushed safely after callback");
 
+    tree.shutdown();
+}
+
+void test_scene_timer() {
+    nle::SceneTree tree;
+    auto root = std::make_unique<nle::Node>("Root");
+    auto timer = std::make_unique<nle::Timer>();
+    nle::Timer* timer_ptr = timer.get();
+    expect(timer_ptr->set_wait_time(0.5), "timer accepts positive wait time");
+    expect(!timer_ptr->set_wait_time(0.0) &&
+           !timer_ptr->set_wait_time(std::numeric_limits<double>::infinity()),
+           "timer rejects invalid wait times");
+    timer_ptr->set_one_shot(true);
+    int timeout_count = 0;
+    timer_ptr->timeout_signal().connect([&timeout_count]() { ++timeout_count; });
+    expect(root->add_child(std::move(timer)) != nullptr, "timer attaches to scene tree");
+    expect(tree.set_root(std::move(root)) && tree.initialize(),
+           "timer scene tree initializes");
+
+    expect(timer_ptr->is_stopped(), "timer starts stopped without autostart");
+    expect(timer_ptr->start(), "timer starts with configured wait time");
+    expect(!timer_ptr->is_stopped() && timer_ptr->get_time_left() == 0.5,
+           "timer exposes active countdown");
+    tree.process_frame(0.2);
+    expect(timeout_count == 0 && std::abs(timer_ptr->get_time_left() - 0.3) < 0.000001,
+           "idle timer counts down with process delta");
+    tree.process_frame(0.3);
+    expect(timeout_count == 1 && timer_ptr->is_stopped(),
+           "one-shot timer emits once and stops");
+
+    timer_ptr->set_one_shot(false);
+    expect(timer_ptr->start(0.1), "timer accepts explicit start duration");
+    tree.process_frame(0.1);
+    expect(timeout_count == 2 && !timer_ptr->is_stopped() &&
+           std::abs(timer_ptr->get_time_left() - 0.5) < 0.000001,
+           "repeating timer restarts after timeout");
+
+    timer_ptr->set_process_callback(nle::Timer::ProcessCallback::Physics);
+    tree.process_frame(1.0);
+    expect(timeout_count == 2, "physics timer ignores idle frames");
+    tree.physics_frame(0.5);
+    expect(timeout_count == 3, "physics timer advances on physics frames");
+
+    timer_ptr->stop();
+    expect(timer_ptr->is_stopped() && timer_ptr->get_time_left() == 0.0,
+           "stopping timer clears remaining time");
+    timer_ptr->set_autostart(true);
+    tree.shutdown();
+    expect(tree.initialize(), "timer tree can initialize after shutdown");
+    expect(!timer_ptr->is_stopped(), "autostart timer starts during ready callback");
     tree.shutdown();
 }
 
@@ -1826,7 +1876,7 @@ int main() {
     test_spatial_nodes();
     test_scene_tree();
     test_scene_tree_pause_modes();
-    test_scene_tree_groups();
+    test_scene_timer();\n    test_scene_tree_groups();
     test_scene_tree_deferred_calls();
     test_deferred_node_deletion();
     test_self_deferred_node_deletion();
