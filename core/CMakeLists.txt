@@ -28,6 +28,7 @@ target_include_directories(nle_core
 set_target_properties(nle_core PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_compile_features(nle_core PUBLIC cxx_std_20)
+target_link_libraries(nle_core PUBLIC Threads::Threads)
 
 if(NLE_DOUBLE_PRECISION)
     target_compile_definitions(nle_core PUBLIC NLE_DOUBLE_PRECISION)

@@ -5,6 +5,7 @@
 #include <cctype>
 #include <new>
 #include <string>
+#include <system_error>
 #include <utility>
 
 namespace nle {

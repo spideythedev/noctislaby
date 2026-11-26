@@ -1366,10 +1366,10 @@ void test_async_resource_loading() {
     expect(loader.add_format_loader(format_loader), "async format loader registers");
     nle::ResourceLoadRequest request = loader.load_async("res://async/shared.nleres");
     expect(request.is_valid(), "async request is valid");
-    expect(request.wait() != nullptr, "async request completes with a resource");
+    expect(request.wait().get() != nullptr, "async request completes with a resource");
     expect(request.get_status() == nle::ResourceLoadRequest::Status::Loaded, "async request reaches Loaded");
     expect(request.get_error() == nle::ErrorCode::Ok, "async request reports success");
-    expect(request.get_resource() != nullptr, "async request exposes loaded resource");
+    expect(request.get_resource().get() != nullptr, "async request exposes loaded resource");
     expect(format_loader->load_count.load() == 1, "async request uses registered format loader");
     nle::ResourceLoadRequest cached = loader.load_async("res://async/shared.nleres");
     expect(cached.get_status() == nle::ResourceLoadRequest::Status::Loaded, "async cache hit resolves immediately");
