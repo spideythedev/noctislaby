@@ -34,6 +34,46 @@ std::string get_extension(const std::string_view path) {
 
 } // namespace
 
+ResourceLoadRequest::ResourceLoadRequest(std::shared_ptr<State> state) : state_(std::move(state)) {}
+bool ResourceLoadRequest::is_valid() const noexcept { return static_cast<bool>(state_); }
+ResourceLoadRequest::Status ResourceLoadRequest::get_status() const {
+    if (!state_) return Status::Invalid;
+    std::lock_guard lock(state_->mutex);
+    return state_->status;
+}
+ErrorCode ResourceLoadRequest::get_error() const {
+    if (!state_) return ErrorCode::InvalidState;
+    std::lock_guard lock(state_->mutex);
+    return state_->error;
+}
+Ref<Resource> ResourceLoadRequest::get_resource() const {
+    if (!state_) return {};
+    std::lock_guard lock(state_->mutex);
+    return state_->status == Status::Loaded ? state_->resource : Ref<Resource>{};
+}
+Ref<Resource> ResourceLoadRequest::wait(ErrorCode* error) const {
+    if (!state_) {
+        if (error) *error = ErrorCode::InvalidState;
+        return {};
+    }
+    std::unique_lock lock(state_->mutex);
+    state_->condition.wait(lock, [this] {
+        return state_->status == Status::Loaded || state_->status == Status::Failed;
+    });
+    if (error) *error = state_->error;
+    return state_->resource;
+}
+ResourceLoader::~ResourceLoader() {
+    {
+        std::lock_guard lock(worker_mutex_);
+        stopping_workers_ = true;
+    }
+    worker_condition_.notify_all();
+    for (std::thread& worker : workers_) {
+        if (worker.joinable()) worker.join();
+    }
+}
+
 bool ResourceLoader::add_format_loader(std::shared_ptr<ResourceFormatLoader> loader) {
     if (loader == nullptr) {
         return false;
@@ -156,6 +196,92 @@ Ref<Resource> ResourceLoader::load(
         *error = state->error;
     }
     return resource;
+}
+
+ResourceLoadRequest ResourceLoader::load_async(const std::string_view path) {
+    std::shared_ptr<ResourceLoadRequest::State> state;
+    try {
+        state = std::make_shared<ResourceLoadRequest::State>();
+    } catch (const std::bad_alloc&) {
+        return {};
+    }
+    ResourceLoadRequest request(state);
+    std::string normalized_path;
+    if (ResourcePath::normalize(path, normalized_path) != ErrorCode::Ok) {
+        std::lock_guard lock(state->mutex);
+        state->status = ResourceLoadRequest::Status::Failed;
+        state->error = ErrorCode::InvalidParameter;
+        return request;
+    }
+    if (Ref<Resource> cached = cache_.get(normalized_path)) {
+        std::lock_guard lock(state->mutex);
+        state->resource = std::move(cached);
+        state->status = ResourceLoadRequest::Status::Loaded;
+        state->error = ErrorCode::Ok;
+        return request;
+    }
+    {
+        std::lock_guard lock(worker_mutex_);
+        if (stopping_workers_) {
+            std::lock_guard state_lock(state->mutex);
+            state->status = ResourceLoadRequest::Status::Failed;
+            state->error = ErrorCode::InvalidState;
+            return request;
+        }
+        try {
+            if (workers_.empty()) {
+                workers_.reserve(2);
+                workers_.emplace_back(&ResourceLoader::worker_loop, this);
+                try {
+                    workers_.emplace_back(&ResourceLoader::worker_loop, this);
+                } catch (const std::system_error&) {
+                    // One worker is sufficient when the platform cannot start a second.
+                }
+            }
+            async_tasks_.push_back({std::move(normalized_path), state});
+        } catch (const std::bad_alloc&) {
+            std::lock_guard state_lock(state->mutex);
+            state->status = ResourceLoadRequest::Status::Failed;
+            state->error = ErrorCode::OutOfMemory;
+            return request;
+        } catch (const std::system_error&) {
+            std::lock_guard state_lock(state->mutex);
+            state->status = ResourceLoadRequest::Status::Failed;
+            state->error = ErrorCode::PlatformError;
+            return request;
+        }
+    }
+    worker_condition_.notify_one();
+    return request;
+}
+void ResourceLoader::worker_loop() {
+    while (true) {
+        AsyncTask task;
+        {
+            std::unique_lock lock(worker_mutex_);
+            worker_condition_.wait(lock, [this] {
+                return stopping_workers_ || !async_tasks_.empty();
+            });
+            if (stopping_workers_ && async_tasks_.empty()) return;
+            task = std::move(async_tasks_.front());
+            async_tasks_.pop_front();
+        }
+        {
+            std::lock_guard lock(task.state->mutex);
+            task.state->status = ResourceLoadRequest::Status::Loading;
+        }
+        ErrorCode error = ErrorCode::Failed;
+        Ref<Resource> resource = load(task.path, &error);
+        {
+            std::lock_guard lock(task.state->mutex);
+            task.state->resource = std::move(resource);
+            task.state->error = task.state->resource ? ErrorCode::Ok : error;
+            task.state->status = task.state->resource
+                ? ResourceLoadRequest::Status::Loaded
+                : ResourceLoadRequest::Status::Failed;
+        }
+        task.state->condition.notify_all();
+    }
 }
 
 ResourceCache& ResourceLoader::get_cache() noexcept {

@@ -1360,6 +1360,29 @@ void test_resource_loader() {
            "empty resource path reports InvalidParameter");
 }
 
+void test_async_resource_loading() {
+    nle::ResourceLoader loader;
+    auto format_loader = std::make_shared<ConcurrentTestFormatLoader>();
+    expect(loader.add_format_loader(format_loader), "async format loader registers");
+    nle::ResourceLoadRequest request = loader.load_async("res://async/shared.nleres");
+    expect(request.is_valid(), "async request is valid");
+    expect(request.wait() != nullptr, "async request completes with a resource");
+    expect(request.get_status() == nle::ResourceLoadRequest::Status::Loaded, "async request reaches Loaded");
+    expect(request.get_error() == nle::ErrorCode::Ok, "async request reports success");
+    expect(request.get_resource() != nullptr, "async request exposes loaded resource");
+    expect(format_loader->load_count.load() == 1, "async request uses registered format loader");
+    nle::ResourceLoadRequest cached = loader.load_async("res://async/shared.nleres");
+    expect(cached.get_status() == nle::ResourceLoadRequest::Status::Loaded, "async cache hit resolves immediately");
+    expect(cached.get_resource().get() == request.get_resource().get(), "async cache hit reuses instance");
+    nle::ResourceLoadRequest missing = loader.load_async("res://async/missing.unknown");
+    expect(!missing.wait(), "unsupported async resource fails");
+    expect(missing.get_status() == nle::ResourceLoadRequest::Status::Failed, "failed request reaches Failed");
+    expect(missing.get_error() == nle::ErrorCode::NotFound, "failed request preserves loader error");
+    nle::ResourceLoadRequest invalid = loader.load_async("");
+    expect(invalid.get_status() == nle::ResourceLoadRequest::Status::Failed, "invalid async path fails immediately");
+    expect(invalid.get_error() == nle::ErrorCode::InvalidParameter, "invalid async path reports InvalidParameter");
+}
+
 void test_concurrent_resource_loading() {
     constexpr std::size_t ThreadCount = 8;
     nle::ResourceLoader loader;
@@ -2001,6 +2024,7 @@ int main() {
     test_file_access();
     test_resource_saver();
     test_resource_loader();
+    test_async_resource_loading();
     test_concurrent_resource_loading();
     test_resources();
     test_project_config();
