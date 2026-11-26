@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <new>
 #include <string>
 #include <utility>
 
@@ -83,12 +84,19 @@ ErrorCode ResourceSaver::save(
         return ErrorCode::InvalidParameter;
     }
 
-    const std::shared_ptr<ResourceFormatSaver> saver = find_saver(get_extension(normalized_path));
-    if (saver == nullptr) {
-        return ErrorCode::NotFound;
-    }
+    try {
+        const std::shared_ptr<ResourceFormatSaver> saver =
+            find_saver(get_extension(normalized_path));
+        if (saver == nullptr) {
+            return ErrorCode::NotFound;
+        }
 
-    return saver->save(normalized_path, resource);
+        return saver->save(normalized_path, resource);
+    } catch (const std::bad_alloc&) {
+        return ErrorCode::OutOfMemory;
+    } catch (...) {
+        return ErrorCode::Failed;
+    }
 }
 
 std::shared_ptr<ResourceFormatSaver> ResourceSaver::find_saver(

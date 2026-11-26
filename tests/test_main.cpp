@@ -53,6 +53,8 @@
 #include <iostream>
 #include <numbers>
 #include <memory>
+#include <new>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -148,6 +150,41 @@ public:
 
     int save_count = 0;
     std::string saved_path;
+};
+
+class ThrowingFormatSaver final : public nle::ResourceFormatSaver {
+public:
+    enum class FailurePoint {
+        Extensions,
+        Save
+    };
+
+    ThrowingFormatSaver(FailurePoint failure_point, bool allocation_failure = false)
+        : failure_point_(failure_point), allocation_failure_(allocation_failure) {}
+
+    [[nodiscard]] std::vector<std::string> get_recognized_extensions() const override {
+        if (failure_point_ == FailurePoint::Extensions) {
+            if (allocation_failure_) {
+                throw std::bad_alloc();
+            }
+            throw std::runtime_error("format extension discovery failed");
+        }
+        return {"nleres"};
+    }
+
+    [[nodiscard]] nle::ErrorCode save(
+        const std::string_view,
+        const nle::Ref<nle::Resource>&
+    ) override {
+        if (allocation_failure_) {
+            throw std::bad_alloc();
+        }
+        throw std::runtime_error("format serialization failed");
+    }
+
+private:
+    FailurePoint failure_point_;
+    bool allocation_failure_;
 };
 
 class TestFormatLoader final : public nle::ResourceFormatLoader {
@@ -1255,6 +1292,44 @@ void test_resource_saver() {
            "unsupported save extension fails");
     expect(saver.save("res://materials/test.nleres", {}) ==
            nle::ErrorCode::InvalidParameter, "null resource cannot be saved");
+
+    nle::ResourceSaver throwing_discovery_saver;
+    expect(throwing_discovery_saver.add_format_saver(
+        std::make_shared<ThrowingFormatSaver>(
+            ThrowingFormatSaver::FailurePoint::Extensions
+        )
+    ), "throwing extension-discovery saver registers");
+    expect(throwing_discovery_saver.save("res://materials/test.nleres", resource) ==
+           nle::ErrorCode::Failed,
+           "format extension-discovery exceptions become Failed");
+
+    nle::ResourceSaver allocation_discovery_saver;
+    expect(allocation_discovery_saver.add_format_saver(
+        std::make_shared<ThrowingFormatSaver>(
+            ThrowingFormatSaver::FailurePoint::Extensions, true
+        )
+    ), "allocation-failing extension-discovery saver registers");
+    expect(allocation_discovery_saver.save("res://materials/test.nleres", resource) ==
+           nle::ErrorCode::OutOfMemory,
+           "extension-discovery allocation failures become OutOfMemory");
+
+    nle::ResourceSaver throwing_save_saver;
+    expect(throwing_save_saver.add_format_saver(
+        std::make_shared<ThrowingFormatSaver>(ThrowingFormatSaver::FailurePoint::Save)
+    ), "throwing serialization saver registers");
+    expect(throwing_save_saver.save("res://materials/test.nleres", resource) ==
+           nle::ErrorCode::Failed,
+           "format serialization exceptions become Failed");
+
+    nle::ResourceSaver allocation_save_saver;
+    expect(allocation_save_saver.add_format_saver(
+        std::make_shared<ThrowingFormatSaver>(
+            ThrowingFormatSaver::FailurePoint::Save, true
+        )
+    ), "allocation-failing serialization saver registers");
+    expect(allocation_save_saver.save("res://materials/test.nleres", resource) ==
+           nle::ErrorCode::OutOfMemory,
+           "serialization allocation failures become OutOfMemory");
 }
 
 void test_resource_loader() {
