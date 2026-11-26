@@ -1381,6 +1381,26 @@ void test_async_resource_loading() {
     nle::ResourceLoadRequest invalid = loader.load_async("");
     expect(invalid.get_status() == nle::ResourceLoadRequest::Status::Failed, "invalid async path fails immediately");
     expect(invalid.get_error() == nle::ErrorCode::InvalidParameter, "invalid async path reports InvalidParameter");
+
+    nle::ResourceLoader shared_loader;
+    auto shared_format = std::make_shared<ConcurrentTestFormatLoader>();
+    expect(shared_loader.add_format_loader(shared_format),
+           "concurrent async format loader registers");
+    std::array<nle::ResourceLoadRequest, 8> requests;
+    for (auto& item : requests) {
+        item = shared_loader.load_async("res://async/shared-request.nleres");
+        expect(item.is_valid(), "concurrent async request is accepted");
+    }
+    for (auto& item : requests) {
+        expect(item.wait().get() != nullptr,
+               "concurrent async request receives the shared resource");
+    }
+    expect(shared_format->load_count.load() == 1,
+           "concurrent async requests deduplicate the underlying resource load");
+    for (const auto& item : requests) {
+        expect(item.get_resource().get() == requests.front().get_resource().get(),
+               "concurrent async requests share one cached resource instance");
+    }
 }
 
 void test_concurrent_resource_loading() {

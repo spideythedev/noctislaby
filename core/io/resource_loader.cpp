@@ -96,9 +96,16 @@ Ref<Resource> ResourceLoader::load(
     ErrorCode* error
 ) {
     std::string normalized_path;
-    if (ResourcePath::normalize(path, normalized_path) != ErrorCode::Ok) {
+    try {
+        if (ResourcePath::normalize(path, normalized_path) != ErrorCode::Ok) {
+            if (error != nullptr) {
+                *error = ErrorCode::InvalidParameter;
+            }
+            return {};
+        }
+    } catch (const std::bad_alloc&) {
         if (error != nullptr) {
-            *error = ErrorCode::InvalidParameter;
+            *error = ErrorCode::OutOfMemory;
         }
         return {};
     }
@@ -208,10 +215,17 @@ ResourceLoadRequest ResourceLoader::load_async(const std::string_view path) {
     }
     ResourceLoadRequest request(state);
     std::string normalized_path;
-    if (ResourcePath::normalize(path, normalized_path) != ErrorCode::Ok) {
+    try {
+        if (ResourcePath::normalize(path, normalized_path) != ErrorCode::Ok) {
+            std::lock_guard lock(state->mutex);
+            state->status = ResourceLoadRequest::Status::Failed;
+            state->error = ErrorCode::InvalidParameter;
+            return request;
+        }
+    } catch (const std::bad_alloc&) {
         std::lock_guard lock(state->mutex);
         state->status = ResourceLoadRequest::Status::Failed;
-        state->error = ErrorCode::InvalidParameter;
+        state->error = ErrorCode::OutOfMemory;
         return request;
     }
     if (Ref<Resource> cached = cache_.get(normalized_path)) {
