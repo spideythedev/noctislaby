@@ -206,6 +206,62 @@ Ref<Resource> ResourceLoader::load(
     return resource;
 }
 
+ErrorCode ResourceLoader::get_dependencies(
+    const std::string_view path,
+    std::vector<std::string>& dependencies
+) const {
+    dependencies.clear();
+
+    std::string normalized_path;
+    try {
+        const ErrorCode path_error = ResourcePath::normalize(path, normalized_path);
+        if (path_error != ErrorCode::Ok) {
+            return path_error;
+        }
+
+        const std::string extension = get_extension(normalized_path);
+        const std::shared_ptr<ResourceFormatLoader> loader = find_loader(extension);
+        if (!loader) {
+            return ErrorCode::NotFound;
+        }
+
+        std::vector<std::string> discovered;
+        const ErrorCode dependency_error =
+            loader->get_dependencies(normalized_path, discovered);
+        if (dependency_error != ErrorCode::Ok) {
+            return dependency_error;
+        }
+
+        std::vector<std::string> normalized_dependencies;
+        normalized_dependencies.reserve(discovered.size());
+        for (const std::string& dependency : discovered) {
+            std::string normalized_dependency;
+            const ErrorCode dependency_path_error =
+                ResourcePath::normalize(dependency, normalized_dependency);
+            if (dependency_path_error != ErrorCode::Ok) {
+                return ErrorCode::InvalidParameter;
+            }
+
+            if (std::find(
+                    normalized_dependencies.begin(),
+                    normalized_dependencies.end(),
+                    normalized_dependency
+                ) == normalized_dependencies.end()) {
+                normalized_dependencies.push_back(std::move(normalized_dependency));
+            }
+        }
+
+        dependencies = std::move(normalized_dependencies);
+        return ErrorCode::Ok;
+    } catch (const std::bad_alloc&) {
+        dependencies.clear();
+        return ErrorCode::OutOfMemory;
+    } catch (...) {
+        dependencies.clear();
+        return ErrorCode::Failed;
+    }
+}
+
 ResourceLoadRequest ResourceLoader::load_async(const std::string_view path) {
     std::shared_ptr<ResourceLoadRequest::State> state;
     try {

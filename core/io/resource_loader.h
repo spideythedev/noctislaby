@@ -40,6 +40,10 @@ public:
     ResourceLoader& operator=(const ResourceLoader&) = delete;
     [[nodiscard]] bool add_format_loader(std::shared_ptr<ResourceFormatLoader> loader);
     [[nodiscard]] Ref<Resource> load(std::string_view path, ErrorCode* error = nullptr);
+    [[nodiscard]] ErrorCode get_dependencies(
+        std::string_view path,
+        std::vector<std::string>& dependencies
+    ) const;
     [[nodiscard]] ResourceLoadRequest load_async(std::string_view path);
     [[nodiscard]] ResourceCache& get_cache() noexcept;
     [[nodiscard]] const ResourceCache& get_cache() const noexcept;

@@ -187,6 +187,33 @@ private:
     bool allocation_failure_;
 };
 
+class DependencyTestFormatLoader final : public nle::ResourceFormatLoader {
+public:
+    [[nodiscard]] std::vector<std::string> get_recognized_extensions() const override {
+        return {"nlescene"};
+    }
+
+    [[nodiscard]] nle::ErrorCode get_dependencies(
+        const std::string_view,
+        std::vector<std::string>& dependencies
+    ) const override {
+        dependencies = {
+            "res://textures/../textures/hero.png",
+            "res://audio/theme.ogg",
+            "res://textures/hero.png"
+        };
+        return nle::ErrorCode::Ok;
+    }
+
+    [[nodiscard]] nle::Ref<nle::Resource> load(
+        const std::string_view,
+        nle::ErrorCode& error
+    ) override {
+        error = nle::ErrorCode::Ok;
+        return nle::make_ref<nle::Resource>();
+    }
+};
+
 class TestFormatLoader final : public nle::ResourceFormatLoader {
 public:
     [[nodiscard]] std::vector<std::string> get_recognized_extensions() const override {
@@ -1360,6 +1387,29 @@ void test_resource_loader() {
            "empty resource path reports InvalidParameter");
 }
 
+void test_resource_dependencies() {
+    nle::ResourceLoader loader;
+    expect(loader.add_format_loader(std::make_shared<DependencyTestFormatLoader>()),
+           "dependency format loader registers");
+
+    std::vector<std::string> dependencies;
+    expect(loader.get_dependencies("res://scenes/level.nlescene", dependencies) ==
+           nle::ErrorCode::Ok, "resource loader discovers format dependencies");
+    expect(dependencies.size() == 2,
+           "resource loader removes duplicate dependencies");
+    expect(dependencies[0] == "res://textures/hero.png",
+           "resource loader normalizes dependency paths");
+    expect(dependencies[1] == "res://audio/theme.ogg",
+           "resource loader preserves dependency order");
+
+    expect(loader.get_dependencies("res://scenes/missing.unknown", dependencies) ==
+           nle::ErrorCode::NotFound && dependencies.empty(),
+           "unknown resource formats return no dependencies");
+    expect(loader.get_dependencies("", dependencies) ==
+           nle::ErrorCode::InvalidParameter && dependencies.empty(),
+           "invalid resource paths are rejected during dependency discovery");
+}
+
 void test_async_resource_loading() {
     nle::ResourceLoader loader;
     auto format_loader = std::make_shared<ConcurrentTestFormatLoader>();
@@ -2044,6 +2094,7 @@ int main() {
     test_file_access();
     test_resource_saver();
     test_resource_loader();
+    test_resource_dependencies();
     test_async_resource_loading();
     test_concurrent_resource_loading();
     test_resources();
